@@ -6,42 +6,57 @@ using UnityEngine;
 
 public static class FilterGenerators
 {
-	public static Mesh combineObjects(List<Mesh> meshes, Controller controller)
+	public static Mesh combineObjects(List<Mesh> meshes)
 	{
 		//Creates a game object for each mesh
 		List<GameObject> gameObjectsToCombine = new List<GameObject>();
 		for (int i = 0; i < meshes.Count; i++)
 		{
 			GameObject meshObject = new GameObject("Mesh " + i);
-			meshObject.transform.parent = controller.transform;
+			//meshObject.transform.parent = controller.transform;
 			MeshFilter meshFilter = meshObject.AddComponent<MeshFilter>();
-			MeshRenderer meshRenderer = meshObject.AddComponent<MeshRenderer>();
 			meshFilter.mesh = meshes[i];
+			gameObjectsToCombine.Add(meshObject);
 			Debug.Log("Mesh " + i + " added to game object");
 		}
-		Vector3 position = controller.transform.position;
-        controller.transform.position = Vector3.zero;
+		//Vector3 position = controller.transform.position;
+        //controller.transform.position = Vector3.zero;
 
 		// Combine the meshes into a single mesh.
-		MeshFilter[] meshFilters = controller.GetComponentsInChildren<MeshFilter>();
-		Debug.Log(meshFilters.Length);
-		CombineInstance[] combine = new CombineInstance[meshFilters.Length-1];
-		for (int i = 0; i < combine.Length; i++)
+		//MeshFilter[] meshFilters = controller.GetComponentsInChildren<MeshFilter>();
+		//Debug.Log(meshFilters.Length);
+		CombineInstance[] combine = new CombineInstance[gameObjectsToCombine.Count];
+        for (int i = 0; i < combine.Length; i++)
 		{
-			combine[i].mesh = meshFilters[i+1].sharedMesh;
-			combine[i].transform = meshFilters[i+1].transform.localToWorldMatrix;
-			meshFilters[i].gameObject.SetActive(false);
+			MeshFilter meshFilter = gameObjectsToCombine[i].GetComponent<MeshFilter>();
+            combine[i].mesh = meshFilter.sharedMesh;
+			combine[i].transform = meshFilter.transform.localToWorldMatrix;
+            meshFilter.gameObject.SetActive(false);
 		}
-		controller.transform.GetComponent<MeshFilter>().mesh = new Mesh();
-		controller.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine, true, true);
-		controller.transform.gameObject.SetActive(true);
+		Mesh newMesh = new();
+        newMesh.CombineMeshes(combine, true, true);
 
-		// Return to original position.
-		controller.transform.position = position;
 
 		// Return the combined mesh.
-		return controller.transform.GetComponent<MeshFilter>().mesh;
+		return newMesh;
 		
 	}
+
+	//takes in a Mesh and resize it to a random size
+	public static Mesh randomResizeMesh(Mesh mesh){
+		//Randomize the size of the mesh
+		float randomSize = UnityEngine.Random.Range(0.1f, 10.0f);
+		Vector3[] vertices = mesh.vertices;
+		for (int i = 0; i < vertices.Length; i++)
+		{
+			vertices[i] = vertices[i] * randomSize;
+		}
+		mesh.vertices = vertices;
+		mesh.RecalculateBounds();
+		mesh.RecalculateNormals();
+		return mesh;
+	}
+
+
 }
 

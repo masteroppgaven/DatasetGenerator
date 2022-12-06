@@ -11,8 +11,15 @@ using UnityEngine;
 //Extends unity mesh class
 public static class Objhandler
 {
+
+    public static Action<List<int>, string> WriteVerticesMappingToFile = (vertices, path) => {
+        //Save vertices to a file seperated by a new line
+        File.WriteAllLines(path, vertices.ConvertAll(i => i.ToString()));
+    };
+
+
     //public static func that writes mesh to a obj file
-    public static Action<Mesh, string> WriteToObj = (mesh, path) => {
+    public static Action<Mesh, string> WriteMeshToObj = (mesh, path) => {
         //Use stringbuilder and string.format to write all vertice values to a .obj file
         StringBuilder sb = new StringBuilder();
 
@@ -35,10 +42,6 @@ public static class Objhandler
         File.WriteAllText(path, sb.ToString());
 
     };
-
-
-
-
 
     public static Func<string, Mesh> LoadMesh = (path) => {
 
@@ -74,10 +77,6 @@ public static class Objhandler
         Mesh mesh = new();
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
-
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        mesh.Optimize();
 
         return mesh;
     };
