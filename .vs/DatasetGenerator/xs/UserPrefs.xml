@@ -1,0 +1,28 @@
+﻿<Properties StartupConfiguration="{086D25E4-53C8-FB0E-9758-8381309937D8}|">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Unity/Assets/Controller.cs">
+    <Files>
+      <File FileName="Assets/MeshData.cs" Line="1" Column="1" />
+      <File FileName="Assets/Controller.cs" Line="8" Column="26" />
+      <File FileName="Assets/ObjHandler.cs" Line="64" Column="113" />
+      <File FileName="Assets/Utilities.cs" Line="181" Column="35" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="DatasetGenerator" expanded="True">
+            <Node name="Assets" expanded="True" />
+            <Node name="Packages" expanded="True" />
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.ItemProperties.Adobe.Substance PreferredExecutionTarget="b7a2a209-455c-491f-8187-210c18a0d555" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="f6c81b63-08ae-41e7-b5f5-47d0f88d4c26" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+</Properties>
