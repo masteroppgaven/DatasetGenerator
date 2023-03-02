@@ -48,6 +48,7 @@ public class Utilities
         Rigidbody rigidbody = gameObject.AddComponent<Rigidbody>();
         rigidbody.useGravity = useGravity;
         rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rigidbody.isKinematic = false;
     }
 
     public static void addMeshCollider(GameObject gameObject)
@@ -83,7 +84,9 @@ public class Utilities
             gameObject.AddComponent<MeshFilter>();
             gameObject.AddComponent<MeshRenderer>();
             gameObject.GetComponent<MeshFilter>().mesh = mesh;
+            gameObject.GetComponent<MeshFilter>().mesh.name = mesh.name;
             gameObject.transform.position = position;
+            gameObject.AddComponent<Controller>();
 
             if (placeOnUnitSphere)
             {
@@ -98,13 +101,13 @@ public class Utilities
         return gameObjects;
     }
 
-
     public static GameObject createGameObjectFromMesh(Mesh mesh, bool placeOnUnitSphere = false, Vector3 position = default(Vector3))
     {
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
         gameObject.GetComponent<MeshFilter>().mesh = mesh;
+        gameObject.GetComponent<MeshFilter>().mesh.name = mesh.name;
         gameObject.transform.position = position;
 
         if (placeOnUnitSphere)
@@ -122,7 +125,13 @@ public class Utilities
     //remove gameObjects from the scene
     public static void removeGameObjects(List<GameObject> gameObjects)
     {
-        gameObjects.ForEach(gameObject => GameObject.Destroy(gameObject));
+        for (int i = gameObjects.Count - 1; i >= 0; i--)
+        {
+            GameObject gameObject = gameObjects[i];
+            GameObject.Destroy(gameObject);
+            gameObjects.RemoveAt(i);
+        }
+
     }
 
     public static Mesh combineMeshes(List<GameObject> gameObjects)
@@ -233,6 +242,26 @@ public class Utilities
             triangles = mesh.triangles == null || mesh.triangles.Length == 0 ? null : (int[])mesh.triangles.Clone(),
             normals = mesh.normals == null || mesh.normals.Length == 0 ? null : (Vector3[])mesh.normals.Clone()
         };
+    }
+
+    public static void AddDeformation(GameObject obj, float forceMultiplier, float deformationLimit)
+    {
+        MeshFilter meshFilter = obj.GetComponent<MeshFilter>();
+        Mesh mesh = meshFilter.mesh;
+        Vector3[] originalVertices = mesh.vertices;
+        Vector3[] deformedVertices = new Vector3[originalVertices.Length];
+        Rigidbody rigidBody = obj.GetComponent<Rigidbody>();
+
+        for (int i = 0; i < originalVertices.Length; i++)
+        {
+            Vector3 force = (originalVertices[i] - obj.transform.InverseTransformPoint(rigidBody.worldCenterOfMass)) * rigidBody.mass * forceMultiplier;
+            Vector3 deformation = force / (1f + Vector3.Dot(force, force));
+            deformation = Vector3.ClampMagnitude(deformation, deformationLimit);
+            deformedVertices[i] = originalVertices[i] + deformation;
+        }
+
+        mesh.vertices = deformedVertices;
+        mesh.RecalculateNormals();
     }
 
 }

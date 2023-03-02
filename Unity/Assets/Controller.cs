@@ -11,7 +11,7 @@ using System.Linq;
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "UnfilteredObjectsWithRecalulatedNormals";
+    private string generatorName = "PhysicsBasedDeformingObjectsDataset";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
@@ -49,6 +49,9 @@ public class Controller : MonoBehaviour
             case "ClusteredObjectsDataset":
                 CreateClusteredObjectsDataset("ClusteredObjectsDataset", "RecalculatedNormals");
                 break;
+            case "PhysicsBasedDeformingObjectsDataset":
+                CreatePhysicsBasedDeformingObjectsDataset("PhysicsBasedDeformingObjectsDataset", "RecalculatedNormals");
+                break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -80,6 +83,20 @@ public class Controller : MonoBehaviour
                 objects.ForEach(obj => rigidbodies.Add(obj.GetComponent<Rigidbody>()));
                 if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f);
                 break;
+            case "PhysicsBasedDeformingObjectsDataset":
+                if (timer > 3f)
+                {
+                    objhandler.saveToFile(new MeshData(objects[0].GetComponent<MeshFilter>().mesh), null);
+                    Utilities.removeGameObjects(objects);
+                    CreatePhysicsBasedDeformingObjectsDatasetHelper();
+                    break;
+                }
+                timer += Time.fixedDeltaTime;
+                /*if (timer < 1.0f)
+                {
+                    Utilities.AddDeformation(objects[0], 0.1f, 0.5f);
+                }*/
+                break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -87,6 +104,35 @@ public class Controller : MonoBehaviour
                 //Exit applications
                 break;
         }
+    }
+
+    public void CreatePhysicsBasedDeformingObjectsDataset(String saveTo, String loadFrom)
+    {
+        timer = -2;
+        objhandler = new(saveTo, pathToDataset);
+        Utilities.addFloorToScene(25, 25);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        CreatePhysicsBasedDeformingObjectsDatasetHelper();
+    }
+
+    public void CreatePhysicsBasedDeformingObjectsDatasetHelper()
+    {
+        //Makes sure that the counter is not out of bounds
+        if (counter > objFiles.Count - 1 || counter > numberOfObjects - 1)
+        {
+            objhandler.CompleteWriting();
+            Application.Quit();
+            return;
+        }
+        Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
+        //adds this mesh to a list and four random other meshes that is not the same a the first one
+        objects.Add(Utilities.createGameObjectFromMesh(mesh, false, new Vector3(0, 1.0f, 0)));
+        Utilities.addRigidbody(objects[0], true);
+        Utilities.addMeshCollider(objects[0]);
+        objects[0].AddComponent<DeformingPrefabs>();
+
+        counter++;
+        timer = 0;
     }
 
     public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
