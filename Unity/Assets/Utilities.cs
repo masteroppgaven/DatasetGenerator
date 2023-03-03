@@ -263,6 +263,18 @@ public class Utilities
         mesh.vertices = deformedVertices;
         mesh.RecalculateNormals();
     }
+    public static void CopyFromTo(List<String> files, String loadFrom, String saveTo)
+    {
+        if (!Directory.Exists(saveTo))
+        {
+            Directory.CreateDirectory(saveTo);
+        }
+        files.ForEach(file =>
+        {
+            File.Copy(file, saveTo, true);
+        });
+
+    }
 
 }
 

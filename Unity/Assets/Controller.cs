@@ -307,19 +307,21 @@ public class Controller : MonoBehaviour
         objhandler = new(saveTo, pathToDataset);
         //Creates a list of all .obj files in the dataset folder
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<string> metaFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.pbtxt", SearchOption.AllDirectories));
+        //List<string> metaFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.pbtxt", SearchOption.AllDirectories)); //get metadata
+        //List<string> recalculated = new List<string>(Directory.GetFiles(pathToDataset + saveTo + "/0-100", "*.obj", SearchOption.AllDirectories));
         //For each objfile in objFiles does Loadmesh get called and then WriteMeshToObj
         //Creates a counter that is used to name the new .obj files that always consist of four digits
-        int counter = 0;
         objFiles.ForEach(objFile =>
         {
+            
             string newName = counter.ToString().PadLeft(4, '0');
             Mesh mesh = objhandler.LoadMesh(objFile, newName);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
             objhandler.saveToFile(new MeshData(mesh));
-            /*
+            
+            /* get metadata
             string metadataDirectory = Path.Combine(pathToDataset, "Metadata");
             if (!Directory.Exists(metadataDirectory))
             {
@@ -328,10 +330,13 @@ public class Controller : MonoBehaviour
             string destinationPath = Path.Combine(metadataDirectory, mesh.name + ".pbtxt");
             File.Copy(metaFiles[counter], destinationPath, true);
             */
+            /*
+            
+            */
             counter++;
 
         });
-
+        //Utilities.CopyFromTo(recalculated, pathToDataset + saveTo, pathToDataset + "rec");
         objhandler.CompleteWriting();
     }
 
