@@ -6,12 +6,13 @@ using System.IO;
 using UnityEngine.AI;
 using System.Linq;
 //Add substance for unity
+using UnityEngine.UIElements;
 
 
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "PhysicsBasedDeformingObjectsDataset";
+    private string generatorName = "RandomDisplacedObjectsDataset";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
@@ -52,6 +53,9 @@ public class Controller : MonoBehaviour
             case "PhysicsBasedDeformingObjectsDataset":
                 CreatePhysicsBasedDeformingObjectsDataset("PhysicsBasedDeformingObjectsDataset", "RecalculatedNormals");
                 break;
+            case "RandomDisplacedObjectsDataset":
+                CreateRandomDisplacementDataset("RandomDisplacedObjectsDataset", "RecalculatedNormals");
+                break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -66,7 +70,7 @@ public class Controller : MonoBehaviour
         switch (generatorName)
         {
             case "ClusteredObjectsDataset":
-                if (timer > 3f)
+                if (timer > 13f)
                 {
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
                     //Creating mapping bewtween original object vertices and the new objects vertices
@@ -127,7 +131,7 @@ public class Controller : MonoBehaviour
         Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
         //adds this mesh to a list and four random other meshes that is not the same a the first one
         objects.Add(Utilities.createGameObjectFromMesh(mesh, false, new Vector3(0, 1.0f, 0)));
-        Utilities.addRigidbody(objects[0], true);
+        Utilities.addRigidbody(objects[0], false);
         Utilities.addMeshCollider(objects[0]);
         objects[0].AddComponent<DeformingPrefabs>();
 
@@ -169,7 +173,29 @@ public class Controller : MonoBehaviour
         counter++;
         timer = 0;
     }
+    public void CreateRandomDisplacementDataset(String saveTo, String loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        List<float> deformationAmounts = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f };
+        objFiles.ForEach(objFile =>
+        {
+            if (counter > 1) return; // To be removed in final version
+            Mesh mesh = objhandler.LoadMesh(objFile);
+            Vector3[] originalVertices = mesh.vertices;
+            foreach (float deformationAmount in deformationAmounts)
+            {
+                mesh.vertices = mesh.vertices.Select((vertex, index) => originalVertices[index] + UnityEngine.Random.insideUnitSphere * deformationAmount).ToArray();
+                mesh.RecalculateNormals();
+                List<string> mapping = new();
+                for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
+                objhandler.saveToFile(new MeshData(mesh), mapping, deformationAmount.ToString());
+            }
 
+            counter++;
+        });
+        objhandler.CompleteWriting();
+    }
     public void CreateResizedObjectsDatset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);

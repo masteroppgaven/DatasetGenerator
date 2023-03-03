@@ -1,7 +1,48 @@
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class DeformingPrefabs : MonoBehaviour
-{
+ {
+    // The amount of deformation to apply to the mesh
+    public float deformationAmount = 0.001f;
+
+    // The mesh to deform
+    private Mesh mesh;
+
+    // The original vertex positions of the mesh
+    private Vector3[] originalVertices;
+
+    void Start()
+    {
+        // Get the mesh component
+        mesh = GetComponent<MeshFilter>().mesh;
+
+        // Get the original vertex positions
+        originalVertices = mesh.vertices;
+    }
+
+    void Update()
+    {
+        // Get the current vertex positions
+        Vector3[] vertices = mesh.vertices;
+
+        // Deform the vertices by a random amount
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i] = originalVertices[i] + Random.insideUnitSphere * deformationAmount;
+        }
+
+        // Update the mesh with the new vertex positions
+        mesh.vertices = vertices;
+        mesh.RecalculateNormals();
+    }
+
+
+
+
+
+
+    /*
     private Rigidbody rigidbody;
     private MeshFilter meshFilter;
     private Mesh mesh;
@@ -71,5 +112,5 @@ public class DeformingPrefabs : MonoBehaviour
             }
         }
     }
-
+*/
 }
