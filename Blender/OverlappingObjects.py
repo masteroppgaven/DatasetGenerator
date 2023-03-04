@@ -17,11 +17,14 @@ def print(data):
                 override = {'window': window, 'screen': screen, 'area': area}
                 bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
 
+
 def read_obj_files(path):
+    path = os.path.abspath(path)
     obj_files = []
-    for filename in os.listdir(path):
-        if filename.endswith(".obj"):
-            obj_files.append(os.path.join(path, filename))
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            if filename.endswith(".obj"):
+                obj_files.append(os.path.join(root, filename))
     return obj_files
 
 
@@ -42,6 +45,7 @@ def clear_scene():
             bpy.data.objects.remove(obj)
 
 def save_object(obj, file_path, vertex_map):
+    file_path = os.path.abspath(file_path)
     # Create the directory for the object if it does not already exist
     folder_path = os.path.join(file_path, obj.name[:4])
     os.makedirs(folder_path, exist_ok=True)
@@ -101,16 +105,16 @@ def generate_vertex_mapping(obj1, obj2):
 
 def get_new_position(obj):
     # Calculate the center point of the object
-    center_point = obj.matrix_world @ obj.data.vertices[0].co
+    cp1 = obj.matrix_world @ obj.data.vertices[0].co
     for v in obj.data.vertices:
-        center_point += obj.matrix_world @ v.co
-    center_point /= len(obj.data.vertices)
-
-    # Calculate a new location based on the center point
-    new_location = obj.location - center_point
-
-    return new_location
-
+        cp1 += obj.matrix_world @ v.co
+    cp1 /= len(obj.data.vertices)
+    
+    cp2 = objects[0].matrix_world @ objects[0].data.vertices[0].co
+    for v in objects[0].data.vertices:
+        cp2 += objects[0].matrix_world @ v.co
+    cp2 /= len(objects[0].data.vertices)
+    return cp2 - (cp1-obj.location)
 
 def addNewObjectsToScene(obj_files):
     obj_list = []
@@ -132,6 +136,7 @@ def createFilterAndMapping(obj_files, scale):
     obj3 = load_obj_file(obj_files[0])
     vertex_map = generate_vertex_mapping(obj3, result_obj)
     objects.insert(0, obj3)
+    
     # Remove and unlink all objects in obj_list except the first element which are the one we are returning.
     return result_obj, vertex_map
 
@@ -140,6 +145,7 @@ def get_percentage_changed(vertex_map):
     num_changed_vertices = sum([1 for v in vertex_map if v == '~'])
     return  100 * num_changed_vertices / len(vertex_map)
 
+
 #checks if precentage is in the subcategory range and removes the subcategory if it is. always return two lists where precentage is used as pivot to return the upper and lower part of the list
 def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, vertex_map, scale):
     upper = []
@@ -147,7 +153,7 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
     to_remove = None
     for subcategory_range in subcategory_ranges:
         if precentage >= subcategory_range[0] and precentage <= subcategory_range[1]:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects/halla", "true \n\n")
+            write_to_file("halla.txt", "true \n\n")
             save_object(obj1, base_dir+"/"+str(subcategory_range[0])+"-"+str(subcategory_range[1]), vertex_map)
             to_remove = subcategory_range
         elif precentage > subcategory_range[1]:
@@ -157,7 +163,7 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
     if to_remove:
         subcategory_ranges.remove(to_remove)
     if(len(lower)<=0 and precentage<lastPresentage or scale>8):
-        write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects/halla", "New filter object. Scale was:"+str(scale)+" \n\n")
+        write_to_file("halla.txt", "New filter object. Scale was:"+str(scale)+" \n\n")
         random_files = get_random_files(currentObjFile, num_files=1)
         bpy.data.objects.remove(objects.pop(), do_unlink=True)
         objects.append(addNewObjectsToScene(random_files)[0])
@@ -168,22 +174,27 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
 #Uses divide and conquer to create a function that will recursivly call itself until the correct radius is found for all subcategories
 
 def recursive_filter(obj_files, scale, subcategory_ranges):
+    global attempts
     obj1, vertex_map = createFilterAndMapping(obj_files, scale)
     pivot = get_percentage_changed(vertex_map)
-    write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects/halla", str(pivot)+'\n')
+    write_to_file("halla.txt", str(pivot)+'\n')
     upper, lower, newScale = check_subcategory_ranges(pivot, subcategory_ranges, obj1, base_dir, vertex_map, scale)
     lastPresentage = pivot
+    attempts +=1
     if len(upper) != 0:
         for s in upper:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects/halla", "Upper "+str(s[0])+"\n\n")
+            write_to_file("halla.txt", "Upper "+str(s[0])+"\n\n")
         recursive_filter(obj_files, newScale*1.1, upper)
     if len(lower) != 0:
         for s in lower:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects/halla", "Lower "+str(s[0])+"\n\n")
+            write_to_file("halla.txt", "Lower "+str(s[len(s)-1])+"\n\n")
         recursive_filter(obj_files, newScale*0.94, lower)
     return
 
 def write_to_file(filename, data):
+    p = os.path.abspath(base_dir)
+    filename = os.path.join(p, filename)
+    os.makedirs(p, exist_ok=True)
     with open(filename, 'a+') as file:
         file.write(data)
 
@@ -196,47 +207,45 @@ def get_random_files(current_file, num_files=3):
 
     # Return the selected files
     return random_files
-    
 
-obj_fily = read_obj_files("/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals")
-base_dir = "/Users/haakongunnarsli/masterprosjekt/dataset/OverlappingObjects"
+def skip(obj):
+    path = os.path.abspath(base_dir)
+    # Create the directory for the object if it does not already exist
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            if filename == os.path.basename(obj):
+                return True
+    return False
+
+dirname = os.path.dirname(__file__)
+base_dir = os.path.join(dirname, '../../../Dataset/OverlappingObjects')
+# Use the absolute path to read theobj files
+obj_fily = read_obj_files(os.path.join(dirname, '../../../Dataset/RecalculatedNormals'))
 counter = 0
 initial_scale = 1.5
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
 objects = []
 lastPresentage = 0
 currentObjFile = obj_fily[0]
+attempts = 0
 
 # Loop over the obj_files list, passing in a list of files to the recursive_filter function
 for i, obj_file in enumerate(obj_fily):
+    if skip(obj_file):
+        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
+        continue
     clear_scene()
     currentObjFile = obj_file
     # Combine the next element with the unique random subset
-    file_list = [obj_file] + ["/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals/0003.obj"]#get_random_files(obj_file, num_files=1)
+    file_list = [obj_file] + get_random_files(obj_file, num_files=1) #["/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals/0003.obj"]#
     objects = addNewObjectsToScene(file_list)
-    #createFilterAndMapping(objects, obj_files, initial_scale)
+    #createFilterAndMapping(objects, initial_scale)
     try:
         recursive_filter(file_list, initial_scale, subcategories.copy())
     except Exception as e:
         print(f"An exception occurred while processing {obj_file}: {str(e)}")
         print(traceback.format_exc())
         break
-    #clear_scene()
-    break
+    write_to_file("halla.txt", "-----------Object: " + objects[0].name + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+    attempts = 0
 
-
-#for obj_file in obj_files:
-#    try:
-#        recursive_filter(obj_file, initial_size, subcategories.copy())
-#    except Exception as e:
-#        print(f"An exception occurred while processing {obj_file}: {str(e)}")
-#        break
-
-#testObj, vertex_map = createFilterAndMapping(obj_files)
-#print(str(get_percentage_changed(vertex_map)))
-
-#x = 0.005
-#print("----------------NyTest------------")
-#test_cases = [0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.055, 0.0575, 0.05875, 0.06]
-#for x in test_cases:
-#    print("[x = {:.3f}, k = {:.2f}]".format(x, get_space_beween(x)))

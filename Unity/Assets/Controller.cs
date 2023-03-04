@@ -7,12 +7,13 @@ using UnityEngine.AI;
 using System.Linq;
 //Add substance for unity
 using UnityEngine.UIElements;
+using System.Collections;
 
 
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "RandomDisplacedObjectsDataset";
+    private string generatorName = "PhysicsBasedDeformingObjectsDataset";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
@@ -50,8 +51,8 @@ public class Controller : MonoBehaviour
             case "ClusteredObjectsDataset":
                 CreateClusteredObjectsDataset("ClusteredObjectsDataset", "RecalculatedNormals");
                 break;
-            case "PhysicsBasedDeformingObjectsDataset":
-                CreatePhysicsBasedDeformingObjectsDataset("PhysicsBasedDeformingObjectsDataset", "RecalculatedNormals");
+            case "RippledObjectsDataset":
+                CreateRippledObjectsDataset("RippledObjectsDataset", "RecalculatedNormals");
                 break;
             case "RandomDisplacedObjectsDataset":
                 CreateRandomDisplacementDataset("RandomDisplacedObjectsDataset", "RecalculatedNormals");
@@ -70,7 +71,7 @@ public class Controller : MonoBehaviour
         switch (generatorName)
         {
             case "ClusteredObjectsDataset":
-                if (timer > 13f)
+                if (timer > 3f)
                 {
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
                     //Creating mapping bewtween original object vertices and the new objects vertices
@@ -87,20 +88,6 @@ public class Controller : MonoBehaviour
                 objects.ForEach(obj => rigidbodies.Add(obj.GetComponent<Rigidbody>()));
                 if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f);
                 break;
-            case "PhysicsBasedDeformingObjectsDataset":
-                if (timer > 3f)
-                {
-                    objhandler.saveToFile(new MeshData(objects[0].GetComponent<MeshFilter>().mesh), null);
-                    Utilities.removeGameObjects(objects);
-                    CreatePhysicsBasedDeformingObjectsDatasetHelper();
-                    break;
-                }
-                timer += Time.fixedDeltaTime;
-                /*if (timer < 1.0f)
-                {
-                    Utilities.AddDeformation(objects[0], 0.1f, 0.5f);
-                }*/
-                break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -110,34 +97,7 @@ public class Controller : MonoBehaviour
         }
     }
 
-    public void CreatePhysicsBasedDeformingObjectsDataset(String saveTo, String loadFrom)
-    {
-        timer = -2;
-        objhandler = new(saveTo, pathToDataset);
-        Utilities.addFloorToScene(25, 25);
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        CreatePhysicsBasedDeformingObjectsDatasetHelper();
-    }
 
-    public void CreatePhysicsBasedDeformingObjectsDatasetHelper()
-    {
-        //Makes sure that the counter is not out of bounds
-        if (counter > objFiles.Count - 1 || counter > numberOfObjects - 1)
-        {
-            objhandler.CompleteWriting();
-            Application.Quit();
-            return;
-        }
-        Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
-        //adds this mesh to a list and four random other meshes that is not the same a the first one
-        objects.Add(Utilities.createGameObjectFromMesh(mesh, false, new Vector3(0, 1.0f, 0)));
-        Utilities.addRigidbody(objects[0], false);
-        Utilities.addMeshCollider(objects[0]);
-        objects[0].AddComponent<DeformingPrefabs>();
-
-        counter++;
-        timer = 0;
-    }
 
     public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
     {
@@ -196,11 +156,60 @@ public class Controller : MonoBehaviour
         });
         objhandler.CompleteWriting();
     }
+
     public void CreateResizedObjectsDatset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> floatList = new List<float>() { 1.1f, 2.0f };
+        objFiles.ForEach(objFile =>
+        {
+            if (counter > 1) return; // To be removed in final version
+            Mesh mesh = objhandler.LoadMesh(objFile);
+            foreach (float scale in floatList)
+            {
+                Mesh resizedMesh = Utilities.TransformMesh(Utilities.Copy(mesh), scale, scale, scale);
+                List<string> mapping = new();
+                for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
+
+                objhandler.saveToFile(new MeshData(resizedMesh), mapping, scale.ToString());
+            }
+            counter++;
+        });
+        objhandler.CompleteWriting();
+    }
+
+    public void CreateRippledObjectsDataset(String saveTo, String loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        List<float> freqList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+        List<float> multiplierList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f };
+        objFiles.ForEach(objFile =>
+        {
+            if (counter > 1) return; // To be removed in final version
+            Mesh mesh = objhandler.LoadMesh(objFile);
+            foreach (var p in freqList.Zip(multiplierList, (freq, multiplier) => new { freq, multiplier }))
+            {
+                GameObject go = Utilities.createGameObjectFromMesh(mesh);
+                go.AddComponent<RippleDeformer>();
+                RippleDeformer script = go.GetComponent<RippleDeformer>();
+                script.Frequency = p.freq;
+                script.Frequency = p.multiplier;
+                List<string> mapping = new();
+                for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
+
+                objhandler.saveToFile(new MeshData(resizedMesh), mapping, scale.ToString());
+            }
+            counter++;
+        });
+        objhandler.CompleteWriting();
+    }
+    public void CreateTwistedObjectsDataset(String saveTo, String loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        List<float> degreeList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f };
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version

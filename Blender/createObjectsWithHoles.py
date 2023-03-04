@@ -17,6 +17,7 @@ def print(data):
                 bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
 
 def read_obj_files(path):
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), path))
     obj_files = []
     for filename in os.listdir(path):
         if filename.endswith(".obj"):
@@ -40,6 +41,7 @@ def clear_scene():
             bpy.data.objects.remove(obj)
 
 def save_object(obj, file_path, vertex_map):
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), path))
     folder_path = os.path.join(file_path, obj.name[:4])
     os.makedirs(folder_path, exist_ok=True)
     
@@ -156,7 +158,7 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
     to_remove = None
     for subcategory_range in subcategory_ranges:
         if precentage >= subcategory_range[0] and precentage <= subcategory_range[1]:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/ObjectsWithHoles/halla", "true \n\n")
+            write_to_file("halla.txt", "true \n\n")
             #Extends base_dir path with name of subcategory
             save_object(obj1, base_dir+"/"+str(subcategory_range[0])+"-"+str(subcategory_range[1]), vertex_map)
             to_remove = subcategory_range
@@ -171,30 +173,35 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
 #Uses divide and conquer to create a function that will recursivly call itself until the correct radius is found for all subcategories
 
 def recursive_filter(obj_file, size, subcategory_ranges):
+    global attempts
     obj1, vertex_map = createFilterAndMapping(obj_file, size)
     pivot = get_percentage_changed(vertex_map)
-    write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/ObjectsWithHoles/halla", str(pivot)+'\n')
-    upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, base_dir, vertex_map)
+    write_to_file("halla.txt", str(pivot)+'\n')
+    upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, output_dir, vertex_map)
+    attempts +=1
     if len(upper) != 0:
         for s in upper:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/ObjectsWithHoles/halla", "Upper "+str(s[0])+"\n\n")
+            write_to_file("halla.txt", "Upper "+str(s[0])+"\n\n")
         multiplier = 1.1 if size < 2 else 1.05
         recursive_filter(obj_file, size*multiplier, upper)
     if len(lower) != 0:
         for s in lower:
-            write_to_file("/Users/haakongunnarsli/masterprosjekt/dataset/ObjectsWithHoles/halla", "Lower "+str(s[0])+"\n\n")
+            write_to_file("halla.txt", "Lower "+str(s[0])+"\n\n")
         recursive_filter(obj_file, size*0.94, lower)
     return
 
 def write_to_file(filename, data):
+    p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
+    filename = os.path.join(p, filename)
+    os.makedirs(p, exist_ok=True)
     with open(filename, 'a+') as file:
         file.write(data)
 
 
+output_dir = "../../../Dataset/ObjectsWithHoles"
+obj_files = read_obj_files("../../../Dataset/RecalculatedNormals")
 
-obj_files = read_obj_files("/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals")
-base_dir = "/Users/haakongunnarsli/masterprosjekt/dataset/ObjectsWithHoles"
-
+attempts = 0
 
 initial_size = 0.04
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
@@ -204,7 +211,10 @@ for obj_file in obj_files:
         recursive_filter(obj_file, initial_size, subcategories.copy())
     except Exception as e:
         print(f"An exception occurred while processing {obj_file}: {str(e)}")
+        print(traceback.format_exc())
         break
+    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+    attempts = 0
 
 #testObj, vertex_map = createFilterAndMapping(obj_files[0], initial_size)
 #print(str(get_percentage_changed(vertex_map)))
