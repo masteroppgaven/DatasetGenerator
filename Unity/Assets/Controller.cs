@@ -137,7 +137,7 @@ public class Controller : MonoBehaviour
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> deformationAmounts = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f };
+        List<float> deformationAmounts = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f};
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version
@@ -199,12 +199,13 @@ public class Controller : MonoBehaviour
                 List<string> mapping = new();
                 for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
 
-                objhandler.saveToFile(new MeshData(resizedMesh), mapping, scale.ToString());
+                objhandler.saveToFile(new MeshData(mesh), mapping, p.freq.ToString());
             }
             counter++;
         });
         objhandler.CompleteWriting();
     }
+
     public void CreateTwistedObjectsDataset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
