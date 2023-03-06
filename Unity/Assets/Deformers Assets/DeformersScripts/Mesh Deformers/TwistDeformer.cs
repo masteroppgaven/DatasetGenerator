@@ -41,7 +41,7 @@ public class TwistDeformer : MonoBehaviour {
 	float OffsetTwist = 0.5f;
 	float normalized,curveValue = 0;
 
-	void Start () 
+	public void Run() 
 	{
 		if (UseEffector != false) {
 			if (Effector != null) {

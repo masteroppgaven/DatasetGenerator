@@ -63,8 +63,7 @@ class ObjHandler
         string mappingFilename = pathToDataset + saveTo + subFolder + "/" + meshy.Name + "/" + meshy.Name + ".txt";
         queue.Add(new Tuple<MeshData, string, List<string>, string>(meshy, filename, mapping, mappingFilename));
     }
-
-
+    
     public async Task WriteVerticesMappingToFileAsync(List<string> mapping, string path)
     {
 

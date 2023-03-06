@@ -8,16 +8,17 @@ using System.Linq;
 //Add substance for unity
 using UnityEngine.UIElements;
 using System.Collections;
+using UnityEngine.XR;
 
 
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "PhysicsBasedDeformingObjectsDataset";
+    private string generatorName = "ClusteredObjectsDataset";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
-    private static int numberOfObjects = 20;//Number of objects that will be created.
-    private static int clusterSize = 20;// Set cluster size if necessary
+    private static int numberOfObjects = 1;//Number of objects that will be created.
+    private static int clusterSize = 1;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private static List<string> objFiles;
     private ObjHandler objhandler;
@@ -28,6 +29,7 @@ public class Controller : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        Debug.Log("deudheuhd");
         switch (generatorName)
         {
             case "UnfilteredObjectsWithRecalulatedNormals":
@@ -54,6 +56,9 @@ public class Controller : MonoBehaviour
             case "RippledObjectsDataset":
                 CreateRippledObjectsDataset("RippledObjectsDataset", "RecalculatedNormals");
                 break;
+            case "TwistedObjectsDataset":
+                CreateTwistedObjectsDataset("TwistedObjectsDataset", "RecalculatedNormals");
+            break;
             case "RandomDisplacedObjectsDataset":
                 CreateRandomDisplacementDataset("RandomDisplacedObjectsDataset", "RecalculatedNormals");
                 break;
@@ -71,14 +76,70 @@ public class Controller : MonoBehaviour
         switch (generatorName)
         {
             case "ClusteredObjectsDataset":
-                if (timer > 3f)
+                if (timer > 3.0f)
                 {
+                    MeshFilter meshFilter = objects[0].GetComponent<MeshFilter>();
+
+                    // Create a new game object to hold the static mesh
+                    GameObject staticObject = new GameObject();
+                    MeshFilter staticMeshFilter = staticObject.AddComponent<MeshFilter>();
+                    staticObject.AddComponent<MeshRenderer>();
+
+                    // Copy the mesh from the original MeshFilter to the new one
+                    staticMeshFilter.mesh = Instantiate(meshFilter.sharedMesh);
+                    // Copy the transform from the original MeshFilter to the new one
+                    staticMeshFilter.transform.SetPositionAndRotation(meshFilter.transform.position, meshFilter.transform.rotation);
+                    staticMeshFilter.transform.localScale = meshFilter.transform.localScale;
+
+                    // Set the local-to-world matrix of the new transform
+                    staticMeshFilter.transform.position = meshFilter.transform.TransformPoint(Vector3.zero);
+                    staticMeshFilter.transform.rotation = meshFilter.transform.rotation;
+
+                    Matrix4x4 offsetMatrix = staticMeshFilter.transform.localToWorldMatrix;
+                    staticMeshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                    // Alternatively, you can use LINQ to perform the same operation in a single line:
+                    List<Vector3> ve = staticMeshFilter.mesh.vertices.Select(v => offsetMatrix.MultiplyPoint3x4(v)).ToList();
+
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
-                    //Creating mapping bewtween original object vertices and the new objects vertices
-                    //Metadata
-                    List<string> mapping = new List<string>();
-                    for (int i = 0; i < objects[0].GetComponent<MeshFilter>().mesh.vertices.Length; i++) mapping.Add(i.ToString());
-                    objhandler.saveToFile(new MeshData(combinedMesh), mapping);
+                    foreach (GameObject obj in objects)
+                    {
+                        // Get the mesh filter and mesh for the current game object
+                        MeshFilter objMeshFilter = obj.GetComponent<MeshFilter>();
+                        Mesh objMesh = objMeshFilter.sharedMesh;
+
+                        // Create a transform that combines the offset matrix with the local-to-world matrix of the current mesh
+                        Matrix4x4 objTransform = offsetMatrix * objMeshFilter.transform.localToWorldMatrix;
+
+                        // Transform the vertices of the current mesh and add them to the ve list
+                        foreach (Vector3 vertex in objMesh.vertices)
+                        {
+                            ve.Add(objTransform.MultiplyPoint3x4(vertex));
+                        }
+                    }
+                    // Pre-compute the vertex keys for the combined mesh
+                    int numVertices = combinedMesh.vertices.Length;
+                    Dictionary<Vector3, int> vertexDict = new Dictionary<Vector3, int>(numVertices);
+                    for (int j = 0; j < numVertices; j++)
+                    {
+                        vertexDict.Add(combinedMesh.vertices[j], j);
+                    }
+
+                    // Creating mapping between original object vertices and the new object's vertices
+                    // Metadata
+                    List<string> mapping = new List<string>(ve.Count);
+                    for (int i = 0; i < ve.Count; i++)
+                    {
+                        if (vertexDict.TryGetValue(ve[i], out int index))
+                        {
+                            mapping.Add(index.ToString());
+                        }
+                        else
+                        {
+                            mapping.Add("~");
+                        }
+                    }
+
+                    objhandler.saveToFile(new MeshData(combinedMesh), mapping, clusterSize.ToString());
                     Utilities.removeGameObjects(objects);
                     CreateClusteredObjectsDatasetHelper();
                     break;
@@ -111,7 +172,7 @@ public class Controller : MonoBehaviour
     public void CreateClusteredObjectsDatasetHelper()
     {
         //Makes sure that the counter is not out of bounds
-        if (counter > objFiles.Count - 1 || counter > numberOfObjects - 1)
+        if (counter >= objFiles.Count || counter >= numberOfObjects)
         {
             objhandler.CompleteWriting();
             Application.Quit();
@@ -120,7 +181,7 @@ public class Controller : MonoBehaviour
         List<Mesh> meshes = new();
         //adds this mesh to a list and four random other meshes that is not the same a the first one
         meshes.Add(objhandler.LoadMesh(objFiles[counter]));
-        Utilities.GenerateRandomNumbers(0, (objFiles.Count - 1), (objFiles.Count) < clusterSize ? (objFiles.Count - 1) : (numberOfObjects - 1), counter)
+        Utilities.GenerateRandomNumbers(0, (objFiles.Count - 1), (objFiles.Count) < clusterSize ? (objFiles.Count - 1) : (clusterSize - 1), counter)
             .ForEach(randomIndex => meshes
             .Add(objhandler.LoadMesh(objFiles[randomIndex])));
         objects = Utilities.createGameObjectsFromMeshes(meshes, true, new Vector3(0.0f, 1.0f, 0.0f));
@@ -133,6 +194,7 @@ public class Controller : MonoBehaviour
         counter++;
         timer = 0;
     }
+
     public void CreateRandomDisplacementDataset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
@@ -183,8 +245,8 @@ public class Controller : MonoBehaviour
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> freqList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
-        List<float> multiplierList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f };
+        List<float> freqList = new List<float>() { 40.0f, 40.0f, 40.0f, 40.0f, 40.0f, 40.0f};
+        List<float> multiplierList = new List<float>() { 0.005f, 0.010f, 0.015f, 0.020f, 0.025f, 0.030f};
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version
@@ -195,11 +257,12 @@ public class Controller : MonoBehaviour
                 go.AddComponent<RippleDeformer>();
                 RippleDeformer script = go.GetComponent<RippleDeformer>();
                 script.Frequency = p.freq;
-                script.Frequency = p.multiplier;
+                script.PeakMultiplier = p.multiplier;
+                script.Run();
                 List<string> mapping = new();
                 for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
 
-                objhandler.saveToFile(new MeshData(mesh), mapping, p.freq.ToString());
+                objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mapping, p.multiplier.ToString());
             }
             counter++;
         });
@@ -210,18 +273,22 @@ public class Controller : MonoBehaviour
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> degreeList = new List<float>() { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f };
+        List<float> degreeList = new List<float>() { 2.0f, 4.0f, 6.0f, 8.0f, 10.0f };
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
-            foreach (float scale in floatList)
+            foreach (float d in degreeList)
             {
-                Mesh resizedMesh = Utilities.TransformMesh(Utilities.Copy(mesh), scale, scale, scale);
+                GameObject go = Utilities.createGameObjectFromMesh(mesh);
+                go.AddComponent<TwistDeformer>();
+                TwistDeformer script = go.GetComponent<TwistDeformer>();
+                script.angleOfTwist = d;
+                script.Run();
                 List<string> mapping = new();
                 for (int i = 0; i < mesh.vertices.Length; i++) mapping.Add(i.ToString());
 
-                objhandler.saveToFile(new MeshData(resizedMesh), mapping, scale.ToString());
+                objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mapping, d.ToString());
             }
             counter++;
         });

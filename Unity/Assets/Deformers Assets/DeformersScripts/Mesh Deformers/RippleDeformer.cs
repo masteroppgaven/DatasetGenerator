@@ -38,7 +38,7 @@ public class RippleDeformer : MonoBehaviour {
 	private AnimationCurve Refinecurve;
 	private float normalizedCurve;
 
-	void Start () 
+	public void Run () 
 	{
 		if (UseEffector != false) {
 			if (Effector != null) {

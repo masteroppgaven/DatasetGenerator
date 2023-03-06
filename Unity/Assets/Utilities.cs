@@ -86,7 +86,6 @@ public class Utilities
             gameObject.GetComponent<MeshFilter>().mesh = mesh;
             gameObject.GetComponent<MeshFilter>().mesh.name = mesh.name;
             gameObject.transform.position = position;
-            gameObject.AddComponent<Controller>();
 
             if (placeOnUnitSphere)
             {
@@ -145,8 +144,9 @@ public class Utilities
             meshFilter.gameObject.SetActive(false);
         }
         Mesh newMesh = new();
+        newMesh.name = gameObjects[0].GetComponent<MeshFilter>().mesh.name;
         newMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        newMesh.CombineMeshes(combine, true, true);
+        newMesh.CombineMeshes(combine, true, true, false);
         newMesh.RecalculateNormals();
         Debug.Log(newMesh.normals[0].ToString());
         // Return the combined mesh.
