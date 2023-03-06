@@ -15,6 +15,6 @@ public class MeshData
         vertices = mesh.vertices.Select(vertex => new System.Numerics.Vector3(vertex.x, vertex.y, vertex.z)).ToList();
         triangles = mesh.triangles.ToList();
         normals = mesh.normals.Select(normal => new System.Numerics.Vector3(normal.x, normal.y, normal.z)).ToList();
-        Name = mesh.name;
+        Name = new string(mesh.name.ToCharArray());
     }
 }
