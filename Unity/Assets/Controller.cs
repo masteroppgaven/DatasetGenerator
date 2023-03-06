@@ -9,7 +9,7 @@ using System.Linq;
 using UnityEngine.UIElements;
 using System.Collections;
 using UnityEngine.XR;
-
+using System.Threading.Tasks;
 
 public class Controller : MonoBehaviour
 {
@@ -18,7 +18,7 @@ public class Controller : MonoBehaviour
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
-    private static int clusterSize = 8;// Set cluster size if necessary
+    private static int clusterSize = 20;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private static List<string> objFiles;
     private ObjHandler objhandler;
@@ -92,7 +92,7 @@ public class Controller : MonoBehaviour
                 timer += Time.fixedDeltaTime;
                 List<Rigidbody> rigidbodies = new();
                 objects.ForEach(obj => rigidbodies.Add(obj.GetComponent<Rigidbody>()));
-                if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f);
+                if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f+(timer*3));
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";

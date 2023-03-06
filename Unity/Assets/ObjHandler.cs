@@ -4,10 +4,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+
 
 class ObjHandler
 {
@@ -17,6 +19,8 @@ class ObjHandler
     private Task consumerTask;
     private int counter = 0;
     private Boolean checkMapping;
+    private SemaphoreSlim semaphore;
+
 
     public ObjHandler(string saveTo, string pathToDataset, Boolean checkMapping = false)
     {
@@ -28,8 +32,10 @@ class ObjHandler
 
     private void Awake()
     {
-        this.queue = new BlockingCollection<Tuple<MeshData, string, Vector3[], string>>(new ConcurrentQueue<Tuple<MeshData, string, Vector3[], string>>(), 9);
-
+        this.queue = new BlockingCollection<Tuple<MeshData, string, Vector3[], string>>(new ConcurrentQueue<Tuple<MeshData, string, Vector3[], string>>(), 100);
+        int maxThreads = Environment.ProcessorCount;
+        this.semaphore = new SemaphoreSlim(maxThreads);
+        Debug.Log(maxThreads);
         this.consumerTask = Task.Run(() =>
         {
             while (!queue.IsCompleted)
@@ -43,11 +49,13 @@ class ObjHandler
                 {
                     break;
                 }
+                semaphore.Wait();
                 WriteMeshToObjAsync(task.Item1, task.Item2).Wait();
                 if (task.Item3 != null)
                 {
                     WriteVerticesMappingToFileAsync(task.Item1, task.Item3, task.Item4).Wait();
                 }
+                semaphore.Release();
             }
         });
     }
@@ -60,56 +68,56 @@ class ObjHandler
 
     public void saveToFile(MeshData meshy, Vector3[] originalVertices = null, string subFolder = null)
     {
-        
         subFolder = "/" + (subFolder == null ? "0-100" : subFolder);
         string filename = pathToDataset + saveTo + subFolder + "/" + meshy.Name + "/" + meshy.Name + ".obj";
         string mappingFilename = pathToDataset + saveTo + subFolder + "/" + meshy.Name + "/" + meshy.Name + ".txt";
         queue.Add(new Tuple<MeshData, string, Vector3[], string>(meshy, filename, originalVertices, mappingFilename));
     }
-    
+
     public async Task WriteVerticesMappingToFileAsync(MeshData mesh, Vector3[] originalVertices, string path)
     {
-        Vector3[] originalVerticesCopy = new Vector3[originalVertices.Length];
-        for (int i = 0; i < originalVertices.Length; i++)
+        Debug.Log("høns");
+        System.Numerics.Vector3[] originalVerticesCopy = new System.Numerics.Vector3[originalVertices.Length];
+        object locky = new object();
+        lock (locky)
         {
-            originalVerticesCopy[i] = new Vector3(originalVertices[i].x, originalVertices[i].y, originalVertices[i].z);
+            
+            for (int i = 0; i < originalVertices.Length; i++)
+            {
+                originalVerticesCopy[i] = new System.Numerics.Vector3(originalVertices[i].x, originalVertices[i].y, originalVertices[i].z);
+            }
+            Debug.Log("tusser");
+            // Save vertices to a file separated by a new line
         }
-        // Save vertices to a file separated by a new line
+        Debug.Log("say what");
+        List<string> m = new List<string>(originalVerticesCopy.Length);
         await Task.Run(() =>
         {
-            List<string> m = new List<string>(originalVerticesCopy.Length);
 
             if (checkMapping)
             {
-                // Pre-compute the vertex keys for the combined mesh
                 int numVertices = mesh.vertices.Count;
-                Dictionary<System.Numerics.Vector3, int> vertexDict = new Dictionary<System.Numerics.Vector3, int>(numVertices);
+                HashSet<System.Numerics.Vector3> vertexSet = new HashSet<System.Numerics.Vector3>(numVertices);
                 for (int j = 0; j < numVertices; j++)
                 {
-                    vertexDict.Add(mesh.vertices[j], j);
+                    vertexSet.Add(mesh.vertices[j]);
                 }
-
-                // Creating mapping between original object vertices and the new object's vertices
-                // Metadata
 
                 for (int i = 0; i < originalVerticesCopy.Length; i++)
                 {
-                    if (vertexDict.TryGetValue(new System.Numerics.Vector3(originalVerticesCopy[i].x, originalVerticesCopy[i].y, originalVerticesCopy[i].z), out int index))
+                    int index = -1;
+                    if (vertexSet.Contains(new System.Numerics.Vector3(originalVerticesCopy[i].X, originalVerticesCopy[i].Y, originalVerticesCopy[i].Z)))
                     {
-                        m.Add(index.ToString());
+                        index = mesh.vertices.FindIndex(v => v == new System.Numerics.Vector3(originalVerticesCopy[i].X, originalVerticesCopy[i].Y, originalVerticesCopy[i].Z));
                     }
-                    else
-                    {
-                        m.Add("~");
-                    }
+
+                    m.Add(index != -1 ? index.ToString() : "~");
                 }
             }
             else
             {
                 for (int i = 0; i < originalVerticesCopy.Length; i++) m.Add(i.ToString());
-
             }
-            
             string directory = Path.GetDirectoryName(path);
             if (!Directory.Exists(directory))
             {
