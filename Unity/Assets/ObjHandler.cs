@@ -147,7 +147,7 @@ class ObjHandler
                 for (int i = 0; i < mesh.triangles.Count; i += 3)
                 {
                     sb.AppendLine(string.Format("f {0}//{0} {1}//{1} {2}//{2}",
-                    mesh.triangles[i] + 1, mesh.triangles[i + 1] + 1, mesh.triangles[i + 2] + 1)); // Denne er feil. Den skal peke på normalen som tilhører fjeset.
+                    mesh.triangles[i] + 1, mesh.triangles[i + 1] + 1, mesh.triangles[i + 2] + 1)); //Denne kan diskuteres. Recalculate nromals lager en vertex normal til hver edge.Dette er vanlig i både blender og unity. Google meshen bruker faces der hver normal tilhører en face.
                 }
             }
         }

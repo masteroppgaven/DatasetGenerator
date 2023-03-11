@@ -276,6 +276,65 @@ public class Utilities
 
     }
 
+    public static GameObject CreateCylinder(float radius, float length)
+    {
+        // Create a new cylinder GameObject
+        GameObject cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+
+        // Get the mesh of the cylinder
+        Mesh mesh = cylinder.GetComponent<MeshFilter>().mesh;
+
+        // Get the vertices of the mesh
+        Vector3[] vertices = mesh.vertices;
+
+        // Scale down the vertices
+        float scaleFactor = radius / 0.5f;
+        float scaleFactorL = length / 2.0f;
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i].y += length;
+            vertices[i].x *= scaleFactor;
+            vertices[i].y *= scaleFactorL;
+            vertices[i].z *= scaleFactor;
+        }
+
+        // Update the mesh with the scaled vertices
+        mesh.vertices = vertices;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        // Return the cylinder GameObject
+        return cylinder;
+    }
+
+    public static int GetRandomHighestVertexIndex(GameObject obj, StreamWriter logFile)
+    {
+        
+        Mesh mesh = obj.GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+        List<int> highestIndices = new List<int>();
+        float highestValue = 0f;
+
+        // Find the highest absolute value of any vertex coordinate
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            float vertexValue = Mathf.Abs(vertices[i].x) + Mathf.Abs(vertices[i].y) + Mathf.Abs(vertices[i].z);
+            if (vertexValue > highestValue)
+            {
+                highestIndices.Clear();
+                highestIndices.Add(i);
+                highestValue = vertexValue;
+            }
+            else if (vertexValue == highestValue)
+            {
+                highestIndices.Add(i);
+            }
+        }
+        //logFile.WriteLine(string.Join("\n", Enumerable.Range(0, vertices.Length).Select(i => $"Vertex {i}: {vertices[i].ToString("F3")}")));
+        //logFile.WriteLine(vertices[highestIndices[0]] + "highest!!");
+        // Return a random index from among the highest vertices
+        return highestIndices[UnityEngine.Random.Range(0, highestIndices.Count)];
+    }
 }
 
 

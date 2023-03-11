@@ -10,11 +10,17 @@ using UnityEngine.UIElements;
 using System.Collections;
 using UnityEngine.XR;
 using System.Threading.Tasks;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
+using System.Data;
+using System.Text;
+using System.Drawing;
+using System.Net;
+using System.Security.Cryptography;
 
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "ClusteredObjectsDataset";
+    private string generatorName = "RandomRotatedNormalObjectsDataset";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
@@ -26,9 +32,17 @@ public class Controller : MonoBehaviour
     private static float timer;
     private static int counter = 0;
 
+
+
+    //private static GameObject ob;
+    //private static Mesh m1;
+    //private float updateTime = 1f; // update every 1 second
+   // private GameObject lineHolder;
+
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
+        Time.timeScale = 0.01f;
         switch (generatorName)
         {
             case "UnfilteredObjectsWithRecalulatedNormals":
@@ -60,6 +74,9 @@ public class Controller : MonoBehaviour
             break;
             case "RandomDisplacedObjectsDataset":
                 CreateRandomDisplacementDataset("RandomDisplacedObjectsDataset", "RecalculatedNormals");
+                break;
+            case "RandomRotatedNormalObjectsDataset":
+                CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "RecalculatedNormals");
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
@@ -94,6 +111,63 @@ public class Controller : MonoBehaviour
                 objects.ForEach(obj => rigidbodies.Add(obj.GetComponent<Rigidbody>()));
                 if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f+(timer*3));
                 break;
+            case "RandomRotatedNormalObjectsDataset":
+                /*
+                Debug.Log("dverg2");
+                Vector3[] newNormals = new Vector3[m1.normals.Length];
+
+                if (ob == null) return;
+
+                for (int i = 0; i < m1.normals.Length; i++)
+                {
+    
+                */
+                /*
+                 * Vector3 ABxz = Vector3.ProjectOnPlane(AB, Vector3.up);
+                // Calculate desired direction of B' based on AB and perpendicular direction in xz-plane
+                Vector3 desiredDir = Quaternion.AngleAxis(45f, Vector3.up) * ABxz.normalized;
+
+                // Calculate new position of point B
+                Vector3 B_prime = A + desiredDir * (float)distance;
+
+                // Calculate angles between A and B, and between A and B'
+                double angle2 = Mathf.Acos(Vector3.Dot(A.normalized, B.normalized)) * Mathf.Rad2Deg;
+                double angle3 = Mathf.Acos(Vector3.Dot(A.normalized, (B_prime - A).normalized)) * Mathf.Rad2Deg;
+                double distance2 = Vector3.Distance(A, B_prime);
+                // Write log information to file
+                Vector3 pos = m1.vertices[i];
+                newNormals[i] = B_prime.normalized;
+                */
+
+                /*
+
+                GameObject lineObject = new GameObject("Line " + i);
+                lineObject.transform.SetParent(lineHolder.transform);
+                LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
+
+                // Set the start and end points of the line
+                lineRenderer.SetPosition(0, A);
+                lineRenderer.SetPosition(1, B_prime);
+
+                // Set the color and width of the line
+                lineRenderer.startColor = UnityEngine.Color.red;
+                lineRenderer.endColor = UnityEngine.Color.red;
+                lineRenderer.startWidth = 0.002f;
+                lineRenderer.endWidth = 0.002f;
+
+                // Disable shadows and other effects
+                lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lineRenderer.receiveShadows = false;
+                lineRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                lineRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+
+
+
+                counter++;
+                m1.normals = newNormals;
+
+                */
+                break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -102,7 +176,6 @@ public class Controller : MonoBehaviour
                 break;
         }
     }
-
 
 
     public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
@@ -139,6 +212,140 @@ public class Controller : MonoBehaviour
         counter++;
         timer = 0;
     }
+
+    public void CreateRandomRotatedNormalObjectsDataset(string saveTo, string loadFrom)
+    {
+        //objhandler = new(saveTo, pathToDataset, true);
+        //ob = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        //ob.transform.position = new Vector3(0f, 0f, 0f);
+        //Debug.Log("load");
+        //lineHolder = new GameObject("Line Holder");
+
+        //Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
+        //Users/haakongunnarsli/masterprosjekt/Dataset/RecalculatedNormals/0-100/0000/0000.obj
+        //m1 = ob.GetComponent<MeshFilter>().mesh;
+        
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        List<float> deltaAngles = new List<float>() { 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f };
+        objFiles.ForEach(objFile =>
+        {
+            if (counter > 1) return; // To be removed in final version
+            Mesh mesh = objhandler.LoadMesh("/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
+            Utilities.createGameObjectFromMesh(mesh);
+
+            deltaAngles.ForEach(deltaAngle =>
+            {
+                if (counter >= 1) return;
+                mesh.RecalculateNormals();
+                Vector3[] newNormals = new Vector3[mesh.normals.Length];
+                string savePath = "/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/log.txt";
+
+                // Create or overwrite the log file
+                StreamWriter logFile = new StreamWriter(savePath, false);
+
+                for (int i = 0; i < mesh.normals.Length; i++)
+                {
+                    Vector3 A = mesh.vertices[i];
+                    Vector3 B = mesh.normals[i];
+                    float distance = Vector3.Distance(A, B);
+
+                    // Calculate AB vector and perpendicular direction to AB in xz-plane
+                    Vector3 AB = B - A;
+
+                   // float radians = 45f * Mathf.Deg2Rad;
+                   // float length = Mathf.Sin(radians) / Mathf.Sin(45f * Mathf.Deg2Rad);
+                    GameObject cyl = Utilities.CreateCylinder(distance, distance);
+
+                    Debug.Log($"{A}   {B}    {distance}");
+
+                    int index = Utilities.GetRandomHighestVertexIndex(cyl, logFile);
+
+                    Debug.Log(cyl.GetComponent<MeshFilter>().mesh.vertices[index] + "before");
+                    //Adjusting the chosen highest Vertex to have the same distance to origo as AB.
+
+                    Vector3[] temp = cyl.GetComponent<MeshFilter>().mesh.vertices;
+
+                    Vector3 OToB = new Vector3(temp[index].normalized.x * distance, temp[index].normalized.y * distance, temp[index].normalized.z * distance);
+                    temp[index] = OToB;
+                    cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                    Debug.Log($"O-A distance: {Vector3.Distance(new Vector3(0,0,0), OToB)}   {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  normal AdjustedDistance");
+
+                    Transform transe = cyl.GetComponent<Transform>();
+                    temp = temp.Select(vertex => vertex + A).ToArray();
+                    //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
+                    cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                    Debug.Log($"A-B distance: {Vector3.Distance(A, temp[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
+
+
+                    //transe.LookAt(B);
+                    //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
+                    
+                    CombineInstance[] combine = new CombineInstance[1];
+                 
+                    MeshFilter mfTest = cyl.GetComponent<MeshFilter>();
+                    combine[0].mesh = mfTest.sharedMesh;
+                    combine[0].transform = mfTest.transform.localToWorldMatrix;
+
+                    Mesh test1 = new();
+                    test1.CombineMeshes(combine, true, true, false);
+                    cyl.GetComponent<MeshFilter>().mesh = test1;
+
+                    
+                    
+                    //cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                    Debug.Log($"A-B rotation: {Vector3.Distance(A, cyl.GetComponent<MeshFilter>().mesh.vertices[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
+
+                    //logFile.WriteLine(string.Join("\n", Enumerable.Range(0, cyl.GetComponent<MeshFilter>().mesh.vertices.Length).Select(i => $"Vertex {i}: {cyl.GetComponent<MeshFilter>().mesh.vertices[i].ToString("F3")}")));
+
+
+
+                    Vector3 B_prime = cyl.GetComponent<MeshFilter>().mesh.vertices[index];
+                    Debug.Log(B_prime + "after");
+                    //GameObject.Destroy(cyl);
+
+                    newNormals[i] = B_prime;
+                    /*
+                    Vector3 ABxz = Vector3.ProjectOnPlane(AB, Vector3.up);
+
+                    // Calculate desired direction of B' based on AB and perpendicular direction in xz-plane
+                    Vector3 desiredDir = Quaternion.AngleAxis(45f, Vector3.up) * ABxz.normalized;
+
+                    // Calculate new position of point B
+                    Vector3 B_prime = A + desiredDir * (float)distance;
+                    */
+                    // Calculate angles between A and B, and between A and B'
+                    double angle2 = Vector3.Angle(A, B);
+                    double angle3 = Vector3.Angle(A, B_prime);
+                    double distance2 = Vector3.Distance(A, B_prime);
+                    // Write log information to file
+                    logFile.WriteLine($"Index {i}: A = {A}, B_prime = {B_prime} B = {B}, Deltadistance = {distance-distance2}");
+                    //logFile.WriteLine($"AB = {AB}, ABxz = {ABxz}");
+                    //logFile.WriteLine($"desiredDir = {desiredDir}");
+                    //logFile.WriteLine($"B' = {B_prime}");
+                    logFile.WriteLine($"OAB: {angle2} degrees, NewOAB: {angle3} degrees, Delta angle = {Math.Abs(angle2 - angle3)} degrees");
+
+                    //newNormals[i] = B_prime;
+                    counter++;
+                }
+
+                // Close the log file
+                logFile.Close();
+
+                counter++;
+                mesh.normals = newNormals;
+                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, "test2");
+            });
+            counter++;
+        });
+        objhandler.CompleteWriting();
+        
+    }
+
+
+
+
+
 
     public void CreateRandomDisplacementDataset(String saveTo, String loadFrom)
     {
