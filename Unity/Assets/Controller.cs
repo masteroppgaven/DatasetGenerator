@@ -20,7 +20,7 @@ using System.Security.Cryptography;
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "RandomRotatedNormalObjectsDataset";
+    private string generatorName = "UnfilteredObjectsWithRecalulatedNormals";
     private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 20;//Number of objects that will be created.
@@ -46,7 +46,7 @@ public class Controller : MonoBehaviour
         switch (generatorName)
         {
             case "UnfilteredObjectsWithRecalulatedNormals":
-                CreateUnfilteredObjectsWithRecalulatedNormals("RecalculatedNormals", "GoogleDataset");
+                CreateUnfilteredObjectsWithRecalulatedNormals("NewRecalculatedNormals8", "Backup");
                 break;
             case "CombinedObjectsDataset":
                 CreateCombinedObjectsDataset("CombinedObjects2", "RecalculatedNormals");
@@ -541,7 +541,7 @@ public class Controller : MonoBehaviour
     {
         objhandler = new(saveTo, pathToDataset);
         //Creates a list of all .obj files in the dataset folder
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom + "/RecalcRemovedLoose", "*.obj", SearchOption.AllDirectories));
         //List<string> metaFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.pbtxt", SearchOption.AllDirectories)); //get metadata
         //List<string> recalculated = new List<string>(Directory.GetFiles(pathToDataset + saveTo + "/0-100", "*.obj", SearchOption.AllDirectories));
         //For each objfile in objFiles does Loadmesh get called and then WriteMeshToObj
