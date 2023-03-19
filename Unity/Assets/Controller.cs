@@ -21,8 +21,8 @@ using UnityEditor;
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "RandomVertexDisplacedObjectsDataset";
-    private static string pathToDataset = "../../dataset/";
+    private string generatorName = "TwistedObjectsDataset"; 
+    private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 1;//Number of objects that will be created.
     private static int clusterSize = 20;// Set cluster size if necessary
@@ -47,39 +47,51 @@ public class Controller : MonoBehaviour
         {
             case "UnfilteredObjectsWithRecalulatedNormals":
                 CreateUnfilteredObjectsWithRecalulatedNormals("NewRecalculatedNormals8", "Backup");
+                UnityEngine.Random.InitState(1);
                 break;
             case "CombinedObjectsDataset":
                 CreateCombinedObjectsDataset("CombinedObjects2", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(2);
                 break;
             case "ResizedObjectsDatset":
                 CreateResizedObjectsDatset("ResizedObjects", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(3);
                 break;
             case "MirroredObjectsDatset":
                 CreateMirroredObjectsDatset("MirroredObjectsDatset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(4);
                 break;
             case "RotatedObjectsDatset":
                 CreateRotatedObjectsDatset("RotatedObjectsDatset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(5);
                 break;
             case "MovedObjectsDataset":
                 CreateMovedObjectsDataset("MovedObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(6);
                 break;
             case "ClusteredObjectsDataset":
                 CreateClusteredObjectsDataset("ClusteredObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(7);
                 break;
             case "RippledObjectsDataset":
                 CreateRippledObjectsDataset("RippledObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(8);
                 break;
             case "TwistedObjectsDataset":
                 CreateTwistedObjectsDataset("TwistedObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(9);
                 break;
             case "RandomVertexDisplacedObjectsDataset":
                 CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(10);
                 break;
             case "RandomRotatedNormalObjectsDataset":
                 CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(11);
                 break;
             case "FrustrumCullingObjectsDataset":
                 CreateFrustrumCullingObjectsObjectsDataset("FrustrumCullingObjectsDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(12);
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";

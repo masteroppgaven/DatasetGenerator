@@ -107,8 +107,8 @@ public class Utilities
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
-        gameObject.GetComponent<MeshFilter>().sharedMesh = mesh;
-        gameObject.GetComponent<MeshFilter>().sharedMesh.name = mesh.name;
+        gameObject.GetComponent<MeshFilter>().mesh = mesh;
+        gameObject.GetComponent<MeshFilter>().mesh.name = mesh.name;
         gameObject.transform.position = position;
         gameObject.layer = 10;
 
@@ -216,11 +216,10 @@ public class Utilities
     public static List<int> GenerateRandomNumbers(int rangeStart, int rangeEnd, int numberOfInts, int illegalNumber = -1)
     {
         List<int> randomNumbers = new List<int>();
-        System.Random random = new System.Random();
 
         while (randomNumbers.Count < numberOfInts)
         {
-            int randomNumber = random.Next(rangeStart, rangeEnd);
+            int randomNumber = UnityEngine.Random.Range(rangeStart, rangeEnd);
 
             if (randomNumber == illegalNumber)
             {
@@ -235,6 +234,8 @@ public class Utilities
 
         return randomNumbers;
     }
+
+
     public static Mesh Copy(Mesh mesh)
     {
         return new Mesh
@@ -526,7 +527,7 @@ public class Utilities
         {
             Vector3 normal = normals[i];
             Vector3 deviatedNormal = DeviateNormal(normal, deviationAngleDegrees, orientationDeviationDegrees);
-            float angle = Vector3.Angle(deviatedNormal, normal);
+            float angle = Vector3.Angle(deviatedNormal, normal.normalized);
             angleDeviations[i] = angle;
 
             // Increment the count for the corresponding degree interval
@@ -561,7 +562,7 @@ public class Utilities
 
     public static Vector3 DeviateNormal(Vector3 normal, float deviationAngleDegrees, float orientationDeviationDegrees)
     {
-        System.Numerics.Vector3 nor = System.Numerics.Vector3.Normalize(new(normal.x*10, normal.y*10, normal.z*10));
+        System.Numerics.Vector3 nor = new(normal.x, normal.y, normal.z);
         // Start with a vector aligned with the z-axis
         System.Numerics.Vector3 xAxis = new(1, 0, 0);
         System.Numerics.Vector3 zAxis = new(0, 0, 1);
@@ -572,10 +573,19 @@ public class Utilities
         System.Numerics.Matrix4x4 orientationRotation = System.Numerics.Matrix4x4.CreateRotationZ(DegreeToRadian(orientationDeviationDegrees));
 
         // Apply rotations
-        deviatedNormal = System.Numerics.Vector3.Transform(deviatedNormal, deviationRotation * orientationRotation);
+        deviatedNormal = System.Numerics.Vector3.Transform(deviatedNormal, orientationRotation*deviationRotation);
+
+        if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z > 0)
+        {
+            return new(deviatedNormal.X, deviatedNormal.Y, deviatedNormal.Z);
+        }
+        else if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z > 0)
+        {
+            return new(-deviatedNormal.X, -deviatedNormal.Y, -deviatedNormal.Z);
+        }
 
         // Compute vector orthogonal to the z-axis and normal
-        System.Numerics.Vector3 rotationAxis = System.Numerics.Vector3.Cross(nor, zAxis);
+        System.Numerics.Vector3 rotationAxis = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(nor, zAxis));
 
         float angle = (float)Math.Acos(System.Numerics.Vector3.Dot(nor, zAxis) / (nor.Length() * zAxis.Length()));
 
