@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 
-class ObjHandler
+public class ObjHandler
 {
     private string pathToDataset;
     private string saveTo;
@@ -76,7 +76,6 @@ class ObjHandler
 
     public async Task WriteVerticesMappingToFileAsync(MeshData mesh, Vector3[] originalVertices, string path)
     {
-        Debug.Log("høns");
         System.Numerics.Vector3[] originalVerticesCopy = new System.Numerics.Vector3[originalVertices.Length];
         object locky = new object();
         lock (locky)
@@ -86,10 +85,8 @@ class ObjHandler
             {
                 originalVerticesCopy[i] = new System.Numerics.Vector3(originalVertices[i].x, originalVertices[i].y, originalVertices[i].z);
             }
-            Debug.Log("tusser");
             // Save vertices to a file separated by a new line
         }
-        Debug.Log("say what");
         List<string> m = new List<string>(originalVerticesCopy.Length);
         await Task.Run(() =>
         {

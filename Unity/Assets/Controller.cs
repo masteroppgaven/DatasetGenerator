@@ -16,67 +16,70 @@ using System.Text;
 using System.Drawing;
 using System.Net;
 using System.Security.Cryptography;
+using UnityEditor;
 
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "UnfilteredObjectsWithRecalulatedNormals";
-    private static string pathToDataset = "/Users/haakongunnarsli/masterprosjekt/dataset/";
+    private string generatorName = "RandomVertexDisplacedObjectsDataset";
+    private static string pathToDataset = "../../dataset/";
     private static string fileNameOfNewObj = "NewObj";
-    private static int numberOfObjects = 20;//Number of objects that will be created.
+    private static int numberOfObjects = 1;//Number of objects that will be created.
     private static int clusterSize = 20;// Set cluster size if necessary
     private static List<GameObject> objects = new();
+    private GameObject obj;
     private static List<string> objFiles;
     private ObjHandler objhandler;
     public Material wood, bricks1;
     private static float timer;
     private static int counter = 0;
-
-
+    private static Mesh mesh;
 
     //private static GameObject ob;
-    //private static Mesh m1;
+
     //private float updateTime = 1f; // update every 1 second
-   // private GameObject lineHolder;
+    // 
 
     // Start is called before the first frame update
-    void Awake()
+    void Start()
     {
-        Time.timeScale = 0.01f;
         switch (generatorName)
         {
             case "UnfilteredObjectsWithRecalulatedNormals":
                 CreateUnfilteredObjectsWithRecalulatedNormals("NewRecalculatedNormals8", "Backup");
                 break;
             case "CombinedObjectsDataset":
-                CreateCombinedObjectsDataset("CombinedObjects2", "RecalculatedNormals");
+                CreateCombinedObjectsDataset("CombinedObjects2", "NewRecalculatedNormals");
                 break;
             case "ResizedObjectsDatset":
-                CreateResizedObjectsDatset("ResizedObjects", "RecalculatedNormals");
+                CreateResizedObjectsDatset("ResizedObjects", "NewRecalculatedNormals");
                 break;
             case "MirroredObjectsDatset":
-                CreateMirroredObjectsDatset("MirroredObjectsDatset", "RecalculatedNormals");
+                CreateMirroredObjectsDatset("MirroredObjectsDatset", "NewRecalculatedNormals");
                 break;
             case "RotatedObjectsDatset":
-                CreateRotatedObjectsDatset("RotatedObjectsDatset", "RecalculatedNormals");
+                CreateRotatedObjectsDatset("RotatedObjectsDatset", "NewRecalculatedNormals");
                 break;
             case "MovedObjectsDataset":
-                CreateMovedObjectsDataset("MovedObjectsDataset", "RecalculatedNormals");
+                CreateMovedObjectsDataset("MovedObjectsDataset", "NewRecalculatedNormals");
                 break;
             case "ClusteredObjectsDataset":
-                CreateClusteredObjectsDataset("ClusteredObjectsDataset", "RecalculatedNormals");
+                CreateClusteredObjectsDataset("ClusteredObjectsDataset", "NewRecalculatedNormals");
                 break;
             case "RippledObjectsDataset":
-                CreateRippledObjectsDataset("RippledObjectsDataset", "RecalculatedNormals");
+                CreateRippledObjectsDataset("RippledObjectsDataset", "NewRecalculatedNormals");
                 break;
             case "TwistedObjectsDataset":
-                CreateTwistedObjectsDataset("TwistedObjectsDataset", "RecalculatedNormals");
-            break;
-            case "RandomDisplacedObjectsDataset":
-                CreateRandomDisplacementDataset("RandomDisplacedObjectsDataset", "RecalculatedNormals");
+                CreateTwistedObjectsDataset("TwistedObjectsDataset", "NewRecalculatedNormals");
+                break;
+            case "RandomVertexDisplacedObjectsDataset":
+                CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset", "NewRecalculatedNormals");
                 break;
             case "RandomRotatedNormalObjectsDataset":
-                CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "RecalculatedNormals");
+                CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "NewRecalculatedNormals");
+                break;
+            case "FrustrumCullingObjectsDataset":
+                CreateFrustrumCullingObjectsObjectsDataset("FrustrumCullingObjectsDataset", "NewRecalculatedNormals");
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
@@ -85,6 +88,7 @@ public class Controller : MonoBehaviour
                 //Exit application
                 Application.Quit();
                 break;
+
         }
     }
     private void FixedUpdate()
@@ -100,7 +104,7 @@ public class Controller : MonoBehaviour
                     Vector3[] ov = mappingMesh.vertices;
 
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
- 
+
                     objhandler.saveToFile(new MeshData(combinedMesh), ov, clusterSize.ToString());
                     Utilities.removeGameObjects(objects);
                     CreateClusteredObjectsDatasetHelper();
@@ -109,64 +113,7 @@ public class Controller : MonoBehaviour
                 timer += Time.fixedDeltaTime;
                 List<Rigidbody> rigidbodies = new();
                 objects.ForEach(obj => rigidbodies.Add(obj.GetComponent<Rigidbody>()));
-                if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f+(timer*3));
-                break;
-            case "RandomRotatedNormalObjectsDataset":
-                /*
-                Debug.Log("dverg2");
-                Vector3[] newNormals = new Vector3[m1.normals.Length];
-
-                if (ob == null) return;
-
-                for (int i = 0; i < m1.normals.Length; i++)
-                {
-    
-                */
-                /*
-                 * Vector3 ABxz = Vector3.ProjectOnPlane(AB, Vector3.up);
-                // Calculate desired direction of B' based on AB and perpendicular direction in xz-plane
-                Vector3 desiredDir = Quaternion.AngleAxis(45f, Vector3.up) * ABxz.normalized;
-
-                // Calculate new position of point B
-                Vector3 B_prime = A + desiredDir * (float)distance;
-
-                // Calculate angles between A and B, and between A and B'
-                double angle2 = Mathf.Acos(Vector3.Dot(A.normalized, B.normalized)) * Mathf.Rad2Deg;
-                double angle3 = Mathf.Acos(Vector3.Dot(A.normalized, (B_prime - A).normalized)) * Mathf.Rad2Deg;
-                double distance2 = Vector3.Distance(A, B_prime);
-                // Write log information to file
-                Vector3 pos = m1.vertices[i];
-                newNormals[i] = B_prime.normalized;
-                */
-
-                /*
-
-                GameObject lineObject = new GameObject("Line " + i);
-                lineObject.transform.SetParent(lineHolder.transform);
-                LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
-
-                // Set the start and end points of the line
-                lineRenderer.SetPosition(0, A);
-                lineRenderer.SetPosition(1, B_prime);
-
-                // Set the color and width of the line
-                lineRenderer.startColor = UnityEngine.Color.red;
-                lineRenderer.endColor = UnityEngine.Color.red;
-                lineRenderer.startWidth = 0.002f;
-                lineRenderer.endWidth = 0.002f;
-
-                // Disable shadows and other effects
-                lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                lineRenderer.receiveShadows = false;
-                lineRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-                lineRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
-
-
-
-                counter++;
-                m1.normals = newNormals;
-
-                */
+                if (timer < 1.5f) Utilities.addPhysicsForClusterMeshesDataset(rigidbodies, -5.0f + (timer * 3));
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
@@ -177,6 +124,57 @@ public class Controller : MonoBehaviour
         }
     }
 
+
+
+    public void CreateRandomRotatedNormalObjectsDataset(string saveTo, string loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        List<float> deltaAngles = new List<float>() { 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f };
+        objFiles.ForEach(objFile =>
+        {
+            if (counter > 1) return; // To be removed in final version
+            Mesh mesh = objhandler.LoadMesh("/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/capsule.obj");
+            mesh.RecalculateNormals();
+            deltaAngles.ForEach(deltaAngle =>
+            {
+                Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, deltaAngle);
+                counter++;
+                mesh.SetNormals(newNormals);
+                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, "test2");
+            });
+            counter++;
+        });
+        objhandler.CompleteWriting();
+
+    }
+
+
+
+
+
+    public void CreateFrustrumCullingObjectsObjectsDataset(String saveTo, String loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        objFiles.ForEach(objFile =>
+        {
+            if (counter >= 1) return;//To be removed in final version
+            mesh = objhandler.LoadMesh(objFiles[4]);
+            //mesh = Utilities.TransformMesh(mesh, 1000, 1000, 1000);
+            obj = Utilities.createGameObjectFromMesh(mesh);
+            Utilities.AddCollidersToMesh(obj);
+
+            Camera.main.transform.position = new(0.0f, 0.0f, 0.5f);
+            Camera.main.transform.LookAt(obj.transform);
+
+            //Mesh newMesh = Utilities.GetNonHitMesh(mesh, 10);
+            //objhandler.saveToFile(new MeshData(newMesh), mesh.vertices);
+            //GameObject.Destroy(obj);
+            counter++;
+        });
+        objhandler.CompleteWriting();
+    }
 
     public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
     {
@@ -213,161 +211,36 @@ public class Controller : MonoBehaviour
         timer = 0;
     }
 
-    public void CreateRandomRotatedNormalObjectsDataset(string saveTo, string loadFrom)
-    {
-        //objhandler = new(saveTo, pathToDataset, true);
-        //ob = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        //ob.transform.position = new Vector3(0f, 0f, 0f);
-        //Debug.Log("load");
-        //lineHolder = new GameObject("Line Holder");
-
-        //Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
-        //Users/haakongunnarsli/masterprosjekt/Dataset/RecalculatedNormals/0-100/0000/0000.obj
-        //m1 = ob.GetComponent<MeshFilter>().mesh;
-        
-        objhandler = new ObjHandler(saveTo, pathToDataset);
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> deltaAngles = new List<float>() { 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f };
-        objFiles.ForEach(objFile =>
-        {
-            if (counter > 1) return; // To be removed in final version
-            Mesh mesh = objhandler.LoadMesh("/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
-            Utilities.createGameObjectFromMesh(mesh);
-
-            deltaAngles.ForEach(deltaAngle =>
-            {
-                if (counter >= 1) return;
-                mesh.RecalculateNormals();
-                Vector3[] newNormals = new Vector3[mesh.normals.Length];
-                string savePath = "/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/log.txt";
-
-                // Create or overwrite the log file
-                StreamWriter logFile = new StreamWriter(savePath, false);
-
-                for (int i = 0; i < mesh.normals.Length; i++)
-                {
-                    Vector3 A = mesh.vertices[i];
-                    Vector3 B = mesh.normals[i];
-                    float distance = Vector3.Distance(A, B);
-
-                    // Calculate AB vector and perpendicular direction to AB in xz-plane
-                    Vector3 AB = B - A;
-
-                   // float radians = 45f * Mathf.Deg2Rad;
-                   // float length = Mathf.Sin(radians) / Mathf.Sin(45f * Mathf.Deg2Rad);
-                    GameObject cyl = Utilities.CreateCylinder(distance, distance);
-
-                    Debug.Log($"{A}   {B}    {distance}");
-
-                    int index = Utilities.GetRandomHighestVertexIndex(cyl, logFile);
-
-                    Debug.Log(cyl.GetComponent<MeshFilter>().mesh.vertices[index] + "before");
-                    //Adjusting the chosen highest Vertex to have the same distance to origo as AB.
-
-                    Vector3[] temp = cyl.GetComponent<MeshFilter>().mesh.vertices;
-
-                    Vector3 OToB = new Vector3(temp[index].normalized.x * distance, temp[index].normalized.y * distance, temp[index].normalized.z * distance);
-                    temp[index] = OToB;
-                    cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
-                    Debug.Log($"O-A distance: {Vector3.Distance(new Vector3(0,0,0), OToB)}   {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  normal AdjustedDistance");
-
-                    Transform transe = cyl.GetComponent<Transform>();
-                    temp = temp.Select(vertex => vertex + A).ToArray();
-                    //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
-                    cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
-                    Debug.Log($"A-B distance: {Vector3.Distance(A, temp[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
 
 
-                    //transe.LookAt(B);
-                    //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
-                    
-                    CombineInstance[] combine = new CombineInstance[1];
-                 
-                    MeshFilter mfTest = cyl.GetComponent<MeshFilter>();
-                    combine[0].mesh = mfTest.sharedMesh;
-                    combine[0].transform = mfTest.transform.localToWorldMatrix;
-
-                    Mesh test1 = new();
-                    test1.CombineMeshes(combine, true, true, false);
-                    cyl.GetComponent<MeshFilter>().mesh = test1;
-
-                    
-                    
-                    //cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
-                    Debug.Log($"A-B rotation: {Vector3.Distance(A, cyl.GetComponent<MeshFilter>().mesh.vertices[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
-
-                    //logFile.WriteLine(string.Join("\n", Enumerable.Range(0, cyl.GetComponent<MeshFilter>().mesh.vertices.Length).Select(i => $"Vertex {i}: {cyl.GetComponent<MeshFilter>().mesh.vertices[i].ToString("F3")}")));
-
-
-
-                    Vector3 B_prime = cyl.GetComponent<MeshFilter>().mesh.vertices[index];
-                    Debug.Log(B_prime + "after");
-                    //GameObject.Destroy(cyl);
-
-                    newNormals[i] = B_prime;
-                    /*
-                    Vector3 ABxz = Vector3.ProjectOnPlane(AB, Vector3.up);
-
-                    // Calculate desired direction of B' based on AB and perpendicular direction in xz-plane
-                    Vector3 desiredDir = Quaternion.AngleAxis(45f, Vector3.up) * ABxz.normalized;
-
-                    // Calculate new position of point B
-                    Vector3 B_prime = A + desiredDir * (float)distance;
-                    */
-                    // Calculate angles between A and B, and between A and B'
-                    double angle2 = Vector3.Angle(A, B);
-                    double angle3 = Vector3.Angle(A, B_prime);
-                    double distance2 = Vector3.Distance(A, B_prime);
-                    // Write log information to file
-                    logFile.WriteLine($"Index {i}: A = {A}, B_prime = {B_prime} B = {B}, Deltadistance = {distance-distance2}");
-                    //logFile.WriteLine($"AB = {AB}, ABxz = {ABxz}");
-                    //logFile.WriteLine($"desiredDir = {desiredDir}");
-                    //logFile.WriteLine($"B' = {B_prime}");
-                    logFile.WriteLine($"OAB: {angle2} degrees, NewOAB: {angle3} degrees, Delta angle = {Math.Abs(angle2 - angle3)} degrees");
-
-                    //newNormals[i] = B_prime;
-                    counter++;
-                }
-
-                // Close the log file
-                logFile.Close();
-
-                counter++;
-                mesh.normals = newNormals;
-                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, "test2");
-            });
-            counter++;
-        });
-        objhandler.CompleteWriting();
-        
-    }
-
-
-
-
-
-
-    public void CreateRandomDisplacementDataset(String saveTo, String loadFrom)
+    public void CreateRandomVertexDisplacementDataset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> deformationAmounts = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f};
+        List<float> displacementRanges = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f };
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
+            mesh.RecalculateNormals();
             Vector3[] originalVertices = mesh.vertices;
-            foreach (float deformationAmount in deformationAmounts)
+            Vector3[] normals = mesh.normals;
+            foreach (float displacementRange in displacementRanges)
             {
-                mesh.vertices = mesh.vertices.Select((vertex, index) => originalVertices[index] + UnityEngine.Random.insideUnitSphere * deformationAmount).ToArray();
+                Vector3[] displacedVertices = new Vector3[originalVertices.Length];
+                for (int i = 0; i < originalVertices.Length; i++)
+                {
+                    displacedVertices[i] = originalVertices[i] + (displacementRange * normals[i] * UnityEngine.Random.Range(-1f, 1f));
+                }
+                mesh.vertices = displacedVertices;
                 mesh.RecalculateNormals();
-                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, deformationAmount.ToString());
+                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, displacementRange.ToString());
             }
-
             counter++;
         });
         objhandler.CompleteWriting();
     }
+
 
     public void CreateResizedObjectsDatset(String saveTo, String loadFrom)
     {
@@ -392,8 +265,8 @@ public class Controller : MonoBehaviour
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> freqList = new List<float>() { 40.0f, 40.0f, 40.0f, 40.0f, 40.0f, 40.0f};
-        List<float> multiplierList = new List<float>() { 0.005f, 0.010f, 0.015f, 0.020f, 0.025f, 0.030f};
+        List<float> freqList = new List<float>() { 40.0f, 40.0f, 40.0f, 40.0f, 40.0f, 40.0f };
+        List<float> multiplierList = new List<float>() { 0.005f, 0.010f, 0.015f, 0.020f, 0.025f, 0.030f };
         objFiles.ForEach(objFile =>
         {
             if (counter > 1) return; // To be removed in final version
@@ -535,6 +408,11 @@ public class Controller : MonoBehaviour
     }
 
 
+
+
+
+
+
     //Takes in the google datset and recalulates the normals and saves it.
     //We need to do this because the normals will get recalulated when applying the filters 
     public void CreateUnfilteredObjectsWithRecalulatedNormals(String saveTo, String loadFrom)
@@ -548,14 +426,14 @@ public class Controller : MonoBehaviour
         //Creates a counter that is used to name the new .obj files that always consist of four digits
         objFiles.ForEach(objFile =>
         {
-            
+
             string newName = counter.ToString().PadLeft(4, '0');
             Mesh mesh = objhandler.LoadMesh(objFile, newName);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
             objhandler.saveToFile(new MeshData(mesh));
-            
+
             /* get metadata
             string metadataDirectory = Path.Combine(pathToDataset, "Metadata");
             if (!Directory.Exists(metadataDirectory))
@@ -575,4 +453,139 @@ public class Controller : MonoBehaviour
         objhandler.CompleteWriting();
     }
 
+
 }
+
+
+/*
+
+public void CreateRandomRotatedNormalObjectsDataset(string saveTo, string loadFrom)
+{
+    //objhandler = new(saveTo, pathToDataset, true);
+    //ob = GameObject.CreatePrimitive(PrimitiveType.Plane);
+    //ob.transform.position = new Vector3(0f, 0f, 0f);
+    //Debug.Log("load");
+    //lineHolder = new GameObject("Line Holder");
+
+    //Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
+    //Users/haakongunnarsli/masterprosjekt/Dataset/RecalculatedNormals/0-100/0000/0000.obj
+    //m1 = ob.GetComponent<MeshFilter>().mesh;
+
+    objhandler = new ObjHandler(saveTo, pathToDataset);
+    objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+    List<float> deltaAngles = new List<float>() { 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f };
+    objFiles.ForEach(objFile =>
+    {
+        if (counter > 1) return; // To be removed in final version
+        Mesh mesh = objhandler.LoadMesh("/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/triangle.obj");
+        Utilities.createGameObjectFromMesh(mesh);
+
+        deltaAngles.ForEach(deltaAngle =>
+        {
+            if (counter >= 1) return;
+            mesh.RecalculateNormals();
+            Vector3[] newNormals = new Vector3[mesh.normals.Length];
+            string savePath = "/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/log.txt";
+
+            // Create or overwrite the log file
+            StreamWriter logFile = new StreamWriter(savePath, false);
+
+            for (int i = 0; i < mesh.normals.Length; i++)
+            {
+                Vector3 A = mesh.vertices[i];
+                Vector3 B = mesh.normals[i];
+                float distance = Vector3.Distance(A, B);
+
+                // Calculate AB vector and perpendicular direction to AB in xz-plane
+                Vector3 AB = B - A;
+
+                // float radians = 45f * Mathf.Deg2Rad;
+                // float length = Mathf.Sin(radians) / Mathf.Sin(45f * Mathf.Deg2Rad);
+                GameObject cyl = Utilities.CreateCylinder(distance, distance);
+
+                Debug.Log($"{A}   {B}    {distance}");
+
+                int index = Utilities.GetRandomHighestVertexIndex(cyl, logFile);
+
+                Debug.Log(cyl.GetComponent<MeshFilter>().mesh.vertices[index] + "before");
+                //Adjusting the chosen highest Vertex to have the same distance to origo as AB.
+
+                Vector3[] temp = cyl.GetComponent<MeshFilter>().mesh.vertices;
+
+                Vector3 OToB = new Vector3(temp[index].normalized.x * distance, temp[index].normalized.y * distance, temp[index].normalized.z * distance);
+                temp[index] = OToB;
+                cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                Debug.Log($"O-A distance: {Vector3.Distance(new Vector3(0, 0, 0), OToB)}   {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  normal AdjustedDistance");
+
+                Transform transe = cyl.GetComponent<Transform>();
+                temp = temp.Select(vertex => vertex + A).ToArray();
+                //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
+                cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                Debug.Log($"A-B distance: {Vector3.Distance(A, temp[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
+
+
+                //transe.LookAt(B);
+                //temp = temp.Select((vertex, index) => transe.InverseTransformPoint(temp[index])).ToArray();
+
+                CombineInstance[] combine = new CombineInstance[1];
+
+                MeshFilter mfTest = cyl.GetComponent<MeshFilter>();
+                combine[0].mesh = mfTest.sharedMesh;
+                combine[0].transform = mfTest.transform.localToWorldMatrix;
+
+                Mesh test1 = new();
+                test1.CombineMeshes(combine, true, true, false);
+                cyl.GetComponent<MeshFilter>().mesh = test1;
+
+
+
+                //cyl.GetComponent<MeshFilter>().mesh.vertices = temp;
+                Debug.Log($"A-B rotation: {Vector3.Distance(A, cyl.GetComponent<MeshFilter>().mesh.vertices[index])}  {cyl.GetComponent<MeshFilter>().mesh.vertices[index]}  - B Moved to pos A   {A}");
+
+                //logFile.WriteLine(string.Join("\n", Enumerable.Range(0, cyl.GetComponent<MeshFilter>().mesh.vertices.Length).Select(i => $"Vertex {i}: {cyl.GetComponent<MeshFilter>().mesh.vertices[i].ToString("F3")}")));
+
+
+
+                Vector3 B_prime = cyl.GetComponent<MeshFilter>().mesh.vertices[index];
+                Debug.Log(B_prime + "after");
+                //GameObject.Destroy(cyl);
+
+                newNormals[i] = B_prime;
+                /*
+                Vector3 ABxz = Vector3.ProjectOnPlane(AB, Vector3.up);
+
+                // Calculate desired direction of B' based on AB and perpendicular direction in xz-plane
+                Vector3 desiredDir = Quaternion.AngleAxis(45f, Vector3.up) * ABxz.normalized;
+
+                // Calculate new position of point B
+                Vector3 B_prime = A + desiredDir * (float)distance;
+                
+                // Calculate angles between A and B, and between A and B'
+                double angle2 = Vector3.Angle(B, N);
+                double angle3 = Vector3.Angle(B, N_prime);
+                double distance2 = Vector3.Distance(A, B_prime);
+                // Write log information to file
+                logFile.WriteLine($"Index {i}: A = {A}, B_prime = {B_prime} B = {B}, Deltadistance = {distance - distance2}");
+                //logFile.WriteLine($"AB = {AB}, ABxz = {ABxz}");
+                //logFile.WriteLine($"desiredDir = {desiredDir}");
+                //logFile.WriteLine($"B' = {B_prime}");
+                logFile.WriteLine($"OAB: {angle2} degrees, NewOAB: {angle3} degrees, Delta angle = {Math.Abs(angle2 - angle3)} degrees");
+
+                //newNormals[i] = B_prime;
+                counter++;
+            }
+
+            // Close the log file
+            logFile.Close();
+
+            counter++;
+            mesh.normals = newNormals;
+            objhandler.saveToFile(new MeshData(mesh), mesh.vertices, "test2");
+        });
+        counter++;
+    });
+    objhandler.CompleteWriting();
+
+}
+
+*/

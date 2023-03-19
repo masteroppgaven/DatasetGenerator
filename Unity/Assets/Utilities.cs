@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using System.IO;
-using UnityEngine.UIElements;
+using UnityEditor;
+
+
 
 public class Utilities
 {
@@ -105,9 +107,10 @@ public class Utilities
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
-        gameObject.GetComponent<MeshFilter>().mesh = mesh;
-        gameObject.GetComponent<MeshFilter>().mesh.name = mesh.name;
+        gameObject.GetComponent<MeshFilter>().sharedMesh = mesh;
+        gameObject.GetComponent<MeshFilter>().sharedMesh.name = mesh.name;
         gameObject.transform.position = position;
+        gameObject.layer = 10;
 
         if (placeOnUnitSphere)
         {
@@ -184,7 +187,6 @@ public class Utilities
     }
 
 
-    //takes in a Mesh and resize it to a random size
     public static Mesh TransformMesh(Mesh mesh, float scaleX = 1f, float scaleY = 1f, float scaleZ = 1f)
     {
         mesh.RecalculateNormals();
@@ -309,7 +311,7 @@ public class Utilities
 
     public static int GetRandomHighestVertexIndex(GameObject obj, StreamWriter logFile)
     {
-        
+
         Mesh mesh = obj.GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
         List<int> highestIndices = new List<int>();
@@ -335,8 +337,264 @@ public class Utilities
         // Return a random index from among the highest vertices
         return highestIndices[UnityEngine.Random.Range(0, highestIndices.Count)];
     }
+
+    public static void SplitObjectIntoFaceSizedColliderObjects(GameObject gameObject)
+    {
+        gameObject.isStatic = true;
+        Mesh mesh = gameObject.GetComponent<MeshFilter>().sharedMesh;
+        int[] triangles = mesh.triangles;
+
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            Vector3 p1 = mesh.vertices[triangles[i]];
+            Vector3 p2 = mesh.vertices[triangles[i + 1]];
+            Vector3 p3 = mesh.vertices[triangles[i + 2]];
+
+            GameObject face = new GameObject("Face Collider " + i);
+            //addRigidbody(face, false);
+
+            face.AddComponent<VisibilityCheck>();
+            MeshCollider collider = face.AddComponent<MeshCollider>();
+            Mesh faceMesh = new Mesh();
+            faceMesh.vertices = new Vector3[] { p1, p2, p3 };
+            faceMesh.triangles = new int[] { 0, 1, 2 }; // Use two triangles that form a quad
+            faceMesh.RecalculateNormals();
+            collider.sharedMesh = faceMesh;
+            collider.cookingOptions = 0;
+            //collider.convex = false;
+            face.isStatic = true;
+        }
+
+    }
+
+    public static void AddCollidersToMesh(GameObject gameObject)
+    {
+        MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+        {
+            Debug.LogError("The GameObject does not have a MeshFilter component.");
+            return;
+        }
+        Mesh mesh = meshFilter.mesh;
+        int[] triangles = mesh.triangles;
+
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            Vector3 rayStart = new(0.1f, 1f, 0.1f);
+            Vector3 p1 = mesh.vertices[triangles[i]];
+            Vector3 p2 = mesh.vertices[triangles[i + 1]];
+            Vector3 p3 = mesh.vertices[triangles[i + 2]];
+            Vector3 p4 = p1 - 5 * rayStart.normalized;
+            Vector3 p5 = p2 - 5 * rayStart.normalized;
+            Vector3 p6 = p3 - 5 * rayStart.normalized;
+
+            GameObject face = new GameObject("Face Collider " + i);
+            face.transform.parent = gameObject.transform;
+            addRigidbody(face, false);
+            MeshCollider collider = face.AddComponent<MeshCollider>();
+            Mesh faceMesh = new Mesh();
+            faceMesh.vertices = new Vector3[] { p1, p2, p3, p4, p5, p6 };
+            faceMesh.triangles = new int[] {
+                0, 1, 2,
+                3, 4, 5,
+                0, 1, 3,
+                1, 2, 3,
+                0, 2, 5,
+                2, 4, 5,
+                0, 1, 4,
+                1, 4, 5
+                }; // Use two triangles that form a quad
+            faceMesh.RecalculateNormals();
+            collider.sharedMesh = faceMesh;
+            collider.cookingOptions = 0;
+            collider.convex = true;
+        }
+    }
+
+
+    public static Mesh GetNonHitMesh(Mesh mesh, LayerMask layerMask)
+    {
+        List<Vector3> newVertices = new List<Vector3>();
+        for (int i = 0; i < mesh.triangles.Length; i += 3)
+        {
+            Vector3 rayStart = new(0.0f, 1.0f, 0.0f);
+            Vector3 p1 = mesh.vertices[mesh.triangles[i]];
+            Vector3 p2 = mesh.vertices[mesh.triangles[i + 1]];
+            Vector3 p3 = mesh.vertices[mesh.triangles[i + 2]];
+
+            Vector3 direction = RayDirectionToPlane(rayStart, p1, p2, p3);
+            //Debug.Log($"dirx = {direction.x}, p1x = {p1.x} p2x = {p2.x} p3.x = {p3.x}");
+            //Ray ray = new Ray(rayStart, direction);
+            RaycastHit hitInfo;
+            Physics.Raycast(rayStart, direction, out hitInfo, 20f);
+            Debug.DrawRay(rayStart, direction * 2, Color.red);
+            MeshCollider meshCollider = hitInfo.collider as MeshCollider;
+            if (meshCollider != null)
+            {
+                Vector3[] colliderVertices = meshCollider.sharedMesh.vertices;
+                if (colliderVertices.Contains(p1))
+                {
+                    if (!newVertices.Contains(p1))
+                    {
+                        newVertices.Add(p1);
+                    }
+                    if (!newVertices.Contains(p2))
+                    {
+                        newVertices.Add(p2);
+                    }
+                    if (!newVertices.Contains(p3))
+                    {
+                        newVertices.Add(p3);
+                    }
+                }
+            }
+            else
+            {
+                Debug.Log("empty");
+            }
+
+        }
+        Mesh newMesh = new Mesh();
+        newMesh.vertices = newVertices.ToArray();
+        newMesh.triangles = GetTrianglesWithSubsetVertices(mesh, newVertices).ToArray();
+        newMesh.RecalculateNormals();
+        newMesh.name = mesh.name;
+
+        return newMesh;
+    }
+
+
+    public static List<int> GetTrianglesWithSubsetVertices(Mesh originalMesh, List<Vector3> newVertices)
+    {
+        Dictionary<Vector3, int> vertexIndices = new Dictionary<Vector3, int>();
+        for (int i = 0; i < newVertices.Count; i++)
+        {
+            vertexIndices[newVertices[i]] = i;
+        }
+
+        List<int> newTriangles = new List<int>();
+
+        int[] originalTriangles = originalMesh.triangles;
+        for (int i = 0; i < originalTriangles.Length; i += 3)
+        {
+            Vector3 v1 = originalMesh.vertices[originalTriangles[i]];
+            Vector3 v2 = originalMesh.vertices[originalTriangles[i + 1]];
+            Vector3 v3 = originalMesh.vertices[originalTriangles[i + 2]];
+
+            if (vertexIndices.ContainsKey(v1) && vertexIndices.ContainsKey(v2) && vertexIndices.ContainsKey(v3))
+            {
+                newTriangles.Add(vertexIndices[v1]);
+                newTriangles.Add(vertexIndices[v2]);
+                newTriangles.Add(vertexIndices[v3]);
+            }
+        }
+
+        return newTriangles;
+    }
+
+    public static Vector3 RayDirectionToPlane(Vector3 rayStart, Vector3 p1, Vector3 p2, Vector3 p3)
+    {
+        // Check for collinear points
+        if (Vector3.Cross(p2 - p1, p3 - p1) == Vector3.zero)
+        {
+            Debug.Log("The input points p1, p2, and p3 are collinear and cannot define a plane.");
+            return (p1.normalized - rayStart.normalized).normalized;
+        }
+
+        Vector3 N = Vector3.Cross(p2 - p1, p3 - p1).normalized;
+        Vector3 direction = p1 - rayStart - Vector3.Dot(p1 - rayStart, N) * N;
+
+        // Check if the ray starting point is on the plane
+        if (direction == Vector3.zero)
+        {
+            throw new ArgumentException("The ray starting point is on the plane defined by p1, p2, and p3.");
+        }
+
+        return direction.normalized;
+    }
+    public static Vector3[] DeviateAllNormals(Vector3[] normals, float deviationAngleDegrees, float orientationDeviationDegrees)
+    {
+        // Initialize arrays to store the angle deviations and degree intervals
+        float[] angleDeviations = new float[normals.Length];
+        int[] degreeIntervals = new int[11];
+
+        // Create a list to store the vectors in the interval [12, 15] degrees
+        List<Vector3> vectorsInInterval = new List<Vector3>();
+
+        // Deviate all normals and store the angle deviations
+        for (int i = 0; i < normals.Length; i++)
+        {
+            Vector3 normal = normals[i];
+            Vector3 deviatedNormal = DeviateNormal(normal, deviationAngleDegrees, orientationDeviationDegrees);
+            float angle = Vector3.Angle(deviatedNormal, normal);
+            angleDeviations[i] = angle;
+
+            // Increment the count for the corresponding degree interval
+            int degreeIntervalIndex = Mathf.Clamp((int)((Mathf.Abs(angle - deviationAngleDegrees)) / 3), 0, 10);
+            degreeIntervals[degreeIntervalIndex]++;
+
+            // Check if the angle deviation is in the interval [12, 15] degrees
+            if (angle >= 12 && angle <= 15)
+            {
+                vectorsInInterval.Add(normal);
+            }
+
+            // Print out the original normal and the deviated normal on the same line
+            //Debug.Log($"Original normal: {normal}, Deviated normal: {deviatedNormal}");
+            
+        }
+        
+        // Calculate the distribution of degree intervals and concatenate in a single string
+        string distributionString = $"Average deviation = {angleDeviations.Average()} target deviation = {deviationAngleDegrees} \n";
+        for (int i = 0; i < degreeIntervals.Length; i++)
+        {
+            string intervalLabel = i == 10 ? "30+ degrees" : $"{i * 3}-{(i + 1) * 3} degrees";
+            distributionString += $"{intervalLabel}: {degreeIntervals[i]} \n";
+        }
+
+        Debug.Log(distributionString);
+
+        return normals;
+    }
+
+
+
+    public static Vector3 DeviateNormal(Vector3 normal, float deviationAngleDegrees, float orientationDeviationDegrees)
+    {
+        System.Numerics.Vector3 nor = System.Numerics.Vector3.Normalize(new(normal.x*10, normal.y*10, normal.z*10));
+        // Start with a vector aligned with the z-axis
+        System.Numerics.Vector3 xAxis = new(1, 0, 0);
+        System.Numerics.Vector3 zAxis = new(0, 0, 1);
+        System.Numerics.Vector3 deviatedNormal = new System.Numerics.Vector3(0, 0, 1);
+
+        // Compute the normal rotations
+        System.Numerics.Matrix4x4 deviationRotation = System.Numerics.Matrix4x4.CreateRotationX(DegreeToRadian(deviationAngleDegrees));
+        System.Numerics.Matrix4x4 orientationRotation = System.Numerics.Matrix4x4.CreateRotationZ(DegreeToRadian(orientationDeviationDegrees));
+
+        // Apply rotations
+        deviatedNormal = System.Numerics.Vector3.Transform(deviatedNormal, deviationRotation * orientationRotation);
+
+        // Compute vector orthogonal to the z-axis and normal
+        System.Numerics.Vector3 rotationAxis = System.Numerics.Vector3.Cross(nor, zAxis);
+
+        float angle = (float)Math.Acos(System.Numerics.Vector3.Dot(nor, zAxis) / (nor.Length() * zAxis.Length()));
+
+        // Rotate deviated normal towards target normal
+        System.Numerics.Matrix4x4 rotationMatrix = System.Numerics.Matrix4x4.CreateFromAxisAngle(rotationAxis, -angle);
+
+        System.Numerics.Vector3 result = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Transform(deviatedNormal, rotationMatrix));
+        return new Vector3(result.X, result.Y, result.Z);
+    }
+
+    // Helper method to convert degrees to radians
+    private static float DegreeToRadian(float degree)
+    {
+        return (float)(degree * (Math.PI / 180.0));
+    }
+    private static float RadianToDegree(float radian)
+    {
+        return (float)(radian * (180.0 / Math.PI));
+    }
+
 }
-
-
-
 
