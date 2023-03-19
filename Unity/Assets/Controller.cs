@@ -292,6 +292,7 @@ public class Controller : MonoBehaviour
                 script.PeakMultiplier = p.multiplier;
                 script.Run();
                 objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mesh.vertices, p.multiplier.ToString());
+                Destroy(go);
             }
             counter++;
         });
@@ -315,6 +316,7 @@ public class Controller : MonoBehaviour
                 script.angleOfTwist = d;
                 script.Run();
                 objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mesh.vertices, d.ToString());
+                Destroy(go);
             }
             counter++;
         });
@@ -331,7 +333,6 @@ public class Controller : MonoBehaviour
             Mesh mesh = objhandler.LoadMesh(objFile);
             Mesh resizedMesh = Utilities.TransformMesh(Utilities.Copy(mesh), -1.0f);
             objhandler.saveToFile(new MeshData(resizedMesh), mesh.vertices, "-1.0f");
-
             counter++;
         });
         objhandler.CompleteWriting();
