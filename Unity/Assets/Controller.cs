@@ -21,10 +21,10 @@ using UnityEditor;
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
-    private string generatorName = "TwistedObjectsDataset"; 
+    private string generatorName = "ClusteredObjectsDataset"; 
     private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
     private static string fileNameOfNewObj = "NewObj";
-    private static int numberOfObjects = 1;//Number of objects that will be created.
+    private static int numberOfObjects = 5;//Number of objects that will be created.
     private static int clusterSize = 20;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private GameObject obj;
@@ -108,15 +108,15 @@ public class Controller : MonoBehaviour
         switch (generatorName)
         {
             case "ClusteredObjectsDataset":
-                if (timer > 3.0f)
+                if (timer > 3.0f && timer < 15.0f)
                 {
+                    timer += 15.0f;
                     List<GameObject> l = new();
                     l.Add(objects[0]);
                     Mesh mappingMesh = Utilities.combineMeshes(l);
                     Vector3[] ov = mappingMesh.vertices;
-
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
-
+                    objhandler.saveObjectsPositionAndRotation(objects);//Because we are saving position and orientation will this function take vare of hiding and destroying objects.
                     objhandler.saveToFile(new MeshData(combinedMesh), ov, clusterSize.ToString());
                     Utilities.removeGameObjects(objects);
                     CreateClusteredObjectsDatasetHelper();
@@ -134,6 +134,41 @@ public class Controller : MonoBehaviour
                 //Exit applications
                 break;
         }
+    }
+    public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
+    {
+        timer = -2;
+        objhandler = new(saveTo, pathToDataset, true);
+        Utilities.addFloorToScene(25, 25);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        CreateClusteredObjectsDatasetHelper();
+    }
+
+    public void CreateClusteredObjectsDatasetHelper()
+    {
+        //Makes sure that the counter is not out of bounds
+        if (counter >= objFiles.Count || counter >= numberOfObjects)
+        {
+            objhandler.CompleteWriting();
+            Application.Quit();
+            return;
+        }
+        List<Mesh> meshes = new();
+        //adds this mesh to a list and four random other meshes that is not the same a the first one
+        meshes.Add(objhandler.LoadMesh(objFiles[counter]));
+        Utilities.GenerateRandomNumbers(0, (objFiles.Count - 1), (objFiles.Count) < clusterSize ? (objFiles.Count - 1) : (clusterSize - 1), counter)
+            .ForEach(randomIndex => meshes
+            .Add(objhandler.LoadMesh(objFiles[randomIndex])));
+        objects = Utilities.createGameObjectsFromMeshes(meshes, true, new Vector3(0.0f, 1.0f, 0.0f));
+        objects.ForEach(obj =>
+        {
+            Utilities.addRigidbody(obj, true);
+            Utilities.addMeshCollider(obj);
+            obj.GetComponent<MeshRenderer>().material = bricks1;
+        });
+        Debug.Log(objects);
+        counter++;
+        timer = 0;
     }
 
 
@@ -188,40 +223,7 @@ public class Controller : MonoBehaviour
         objhandler.CompleteWriting();
     }
 
-    public void CreateClusteredObjectsDataset(String saveTo, String loadFrom)
-    {
-        timer = -2;
-        objhandler = new(saveTo, pathToDataset, true);
-        Utilities.addFloorToScene(25, 25);
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        CreateClusteredObjectsDatasetHelper();
-    }
 
-    public void CreateClusteredObjectsDatasetHelper()
-    {
-        //Makes sure that the counter is not out of bounds
-        if (counter >= objFiles.Count || counter >= numberOfObjects)
-        {
-            objhandler.CompleteWriting();
-            Application.Quit();
-            return;
-        }
-        List<Mesh> meshes = new();
-        //adds this mesh to a list and four random other meshes that is not the same a the first one
-        meshes.Add(objhandler.LoadMesh(objFiles[counter]));
-        Utilities.GenerateRandomNumbers(0, (objFiles.Count - 1), (objFiles.Count) < clusterSize ? (objFiles.Count - 1) : (clusterSize - 1), counter)
-            .ForEach(randomIndex => meshes
-            .Add(objhandler.LoadMesh(objFiles[randomIndex])));
-        objects = Utilities.createGameObjectsFromMeshes(meshes, true, new Vector3(0.0f, 1.0f, 0.0f));
-        objects.ForEach(obj =>
-        {
-            Utilities.addRigidbody(obj, true);
-            Utilities.addMeshCollider(obj);
-            obj.GetComponent<MeshRenderer>().material = bricks1;
-        });
-        counter++;
-        timer = 0;
-    }
 
 
 
