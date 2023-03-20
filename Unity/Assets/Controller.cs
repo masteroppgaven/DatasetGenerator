@@ -25,7 +25,7 @@ public class Controller : MonoBehaviour
     private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 5;//Number of objects that will be created.
-    private static int clusterSize = 20;// Set cluster size if necessary
+    private static int clusterSize = 100;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private GameObject obj;
     private static List<string> objFiles;
@@ -48,10 +48,6 @@ public class Controller : MonoBehaviour
             case "UnfilteredObjectsWithRecalulatedNormals":
                 CreateUnfilteredObjectsWithRecalulatedNormals("NewRecalculatedNormals8", "Backup");
                 UnityEngine.Random.InitState(1);
-                break;
-            case "CombinedObjectsDataset":
-                CreateCombinedObjectsDataset("CombinedObjects2", "NewRecalculatedNormals");
-                UnityEngine.Random.InitState(2);
                 break;
             case "ResizedObjectsDatset":
                 CreateResizedObjectsDatset("ResizedObjects", "NewRecalculatedNormals");
@@ -196,10 +192,6 @@ public class Controller : MonoBehaviour
 
     }
 
-
-
-
-
     public void CreateFrustrumCullingObjectsObjectsDataset(String saveTo, String loadFrom)
     {
         objhandler = new ObjHandler(saveTo, pathToDataset);
@@ -222,9 +214,6 @@ public class Controller : MonoBehaviour
         });
         objhandler.CompleteWriting();
     }
-
-
-
 
 
     public void CreateRandomVertexDisplacementDataset(String saveTo, String loadFrom)

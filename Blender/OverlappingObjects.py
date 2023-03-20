@@ -208,19 +208,30 @@ def get_random_files(current_file, num_files=3):
     # Return the selected files
     return random_files
 
-def skip(obj):
+def skip(i):
     path = os.path.abspath(base_dir)
-    # Create the directory for the object if it does not already exist
+    next_obj_file = None
+    if i + 1 < len(obj_fily):
+        next_obj_file = obj_fily[i + 1]
+    
+    if next_obj_file == None:
+        return False
+    
+    count = 0
     for root, dirs, files in os.walk(path):
         for filename in files:
-            if filename == os.path.basename(obj):
-                return True
+            if os.path.basename(next_obj_file) == os.path.basename(filename):
+                count += 1
+                if count == len(subcategories):
+                    return True
     return False
 
+
 dirname = os.path.dirname(__file__)
-base_dir = os.path.join(dirname, '../../../Dataset/OverlappingObjects')
+base_dir = os.path.join(dirname, '../../../Dataset/OverlappingObjects2')
 # Use the absolute path to read theobj files
 obj_fily = read_obj_files(os.path.join(dirname, '../../../Dataset/RecalculatedNormals'))
+random.seed(1)
 counter = 0
 initial_scale = 1.5
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
@@ -231,8 +242,8 @@ attempts = 0
 
 # Loop over the obj_files list, passing in a list of files to the recursive_filter function
 for i, obj_file in enumerate(obj_fily):
-    if skip(obj_file):
-        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
+    if skip(i):
+        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n\n")
         continue
     clear_scene()
     currentObjFile = obj_file

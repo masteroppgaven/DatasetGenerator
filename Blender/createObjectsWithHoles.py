@@ -7,6 +7,8 @@ import math
 import concurrent.futures
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
+import traceback
+import random
 
 def print(data):
     for window in bpy.context.window_manager.windows:
@@ -19,11 +21,11 @@ def print(data):
 def read_obj_files(path):
     path = os.path.abspath(os.path.join(os.path.dirname(__file__), path))
     obj_files = []
-    for filename in os.listdir(path):
-        if filename.endswith(".obj"):
-            obj_files.append(os.path.join(path, filename))
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            if filename.endswith(".obj"):
+                obj_files.append(os.path.join(root, filename))
     return obj_files
-
 
 def load_obj_file(obj_file, location):
     try:
@@ -41,7 +43,7 @@ def clear_scene():
             bpy.data.objects.remove(obj)
 
 def save_object(obj, file_path, vertex_map):
-    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), path))
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), file_path))
     folder_path = os.path.join(file_path, obj.name[:4])
     os.makedirs(folder_path, exist_ok=True)
     
@@ -98,17 +100,18 @@ def get_bevel_width(x):
     if x < 0.055:
         return 1.0
     elif x >= 0.055:
-        k = 1.0 - ((x - 0.055) / 0.005) ** 2
+        k = 1.0 - ((x - 0.055) / 0.1) ** 2
         return max(0.0, k)
     else:
         return 0.0
 
 def create_rounded_cube_grid(num_rows, num_cols, size, length):
     shapes = []
+    #Every other row is shifted by half the size of the cylinder
     for i in range(num_rows):
         for j in range(num_cols):
-            x = i * size*get_space_beween(size)
-            y = j * size*get_space_beween(size)
+            x = i * size*get_space_beween(size) + (j % 2) * size*get_space_beween(size)/2
+            y = j * size*get_space_beween(size) * np.sqrt(3)/2
             z = 0
             shape = None
             if size<=0.055:
@@ -179,16 +182,22 @@ def recursive_filter(obj_file, size, subcategory_ranges):
     write_to_file("halla.txt", str(pivot)+'\n')
     upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, output_dir, vertex_map)
     attempts +=1
+    if attempts > 160:
+        write_to_file("halla.txt", "Skipper skippy \n\n")
+        return
     if len(upper) != 0:
+        multiplierU = new_cylinder_radius(size, get_volume(obj1)*5)
         for s in upper:
-            write_to_file("halla.txt", "Upper "+str(s[0])+"\n\n")
-        multiplier = 1.1 if size < 2 else 1.05
-        recursive_filter(obj_file, size*multiplier, upper)
+            write_to_file("halla.txt", "Upper "+str(s[0])+"M = "+str(multiplierU)+ " Size = " + str(size) +"\n\n")
+        recursive_filter(obj_file, multiplierU, upper)
     if len(lower) != 0:
+        multiplierL = new_cylinder_radius(size, (-get_volume(obj1)/5))
         for s in lower:
-            write_to_file("halla.txt", "Lower "+str(s[0])+"\n\n")
-        recursive_filter(obj_file, size*0.94, lower)
+            write_to_file("halla.txt", "Lower "+str(s[0])+"M = "+str(multiplierL)+ " Size = " + str(size) +"\n\n")
+        recursive_filter(obj_file, multiplierL, lower)
     return
+
+
 
 def write_to_file(filename, data):
     p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
@@ -197,24 +206,69 @@ def write_to_file(filename, data):
     with open(filename, 'a+') as file:
         file.write(data)
 
+def skip(obj):
+    p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
+    # Create the directory for the object if it does not already exist
+    for root, dirs, files in os.walk(p):
+        for filename in files:
+            if filename == os.path.basename(obj):
+                return True
+    return False
+
+def print_m_values():
+    clear_scene()
+    obj = load_obj_file(obj_files[0], (0,0,0))
+    sizes = [0.01, 0.02, 0.03, 0.04, 0.045, 0.05, 0.055, 0.056, 0.057, 0.058, 0.059,  0.06, 0.07, 0.08, 0.09, 0.1]
+    create_rounded_cube_grid(10, 10, 0.055, 3)
+    for size in sizes:
+        m = new_cylinder_radius(size, get_volume(obj)*5)
+        m2 = new_cylinder_radius(size, (-get_volume(obj)/5))
+        b = get_bevel_width(size)
+        print(f"size={size}, m={m}, m2 = {m2}, b ={b}")
+
+def new_cylinder_radius(old_radius, volume_change):
+    old_volume = math.pi * (old_radius ** 2)
+    target_volume = old_volume + volume_change
+    new_radius = math.sqrt(target_volume /math.pi)
+    return new_radius
+
+def get_volume(obj):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    volume = bm.calc_volume()
+    bm.clear()
+    return volume
+    
+
 
 output_dir = "../../../Dataset/ObjectsWithHoles"
 obj_files = read_obj_files("../../../Dataset/RecalculatedNormals")
-
+print(obj_files[1])
+random.seed(2)
 attempts = 0
-
+counter = 0
 initial_size = 0.04
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
-clear_scene()
-for obj_file in obj_files:
-    try:
-        recursive_filter(obj_file, initial_size, subcategories.copy())
-    except Exception as e:
-        print(f"An exception occurred while processing {obj_file}: {str(e)}")
-        print(traceback.format_exc())
-        break
-    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
-    attempts = 0
+print_m_values()
+
+#clear_scene()
+
+#for obj_file in obj_files:
+#    if(counter > 1):
+#        break
+#    if skip(obj_file):
+#        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
+#        continue
+#    try:
+#        recursive_filter(obj_file, initial_size, subcategories.copy())
+#    except Exception as e:
+#        print(f"An exception occurred while processing {obj_file}: {str(e)}")
+#        print(traceback.format_exc())
+#        break
+#    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+#    counter += 1
+#    attempts = 0
+
 
 #testObj, vertex_map = createFilterAndMapping(obj_files[0], initial_size)
 #print(str(get_percentage_changed(vertex_map)))
