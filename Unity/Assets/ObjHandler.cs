@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using UnityEngine;
+using UnityEngine.XR;
 
 
 public class ObjHandler
@@ -18,6 +19,7 @@ public class ObjHandler
     private Task consumerTask;
     private int counter = 0;
     private Boolean checkMapping;
+    private List<string> clusteredPositionAndOrientation;
     private SemaphoreSlim semaphore;
 
 
@@ -54,6 +56,10 @@ public class ObjHandler
                 {
                     WriteVerticesMappingToFileAsync(task.Item1, task.Item3, task.Item4).Wait();
                 }
+                if (clusteredPositionAndOrientation != null)
+                {
+                    s(task.Item4).Wait();
+                }
                 semaphore.Release();
             }
         });
@@ -71,6 +77,38 @@ public class ObjHandler
         string filename = pathToDataset + saveTo + subFolder + "/" + meshy.Name + "/" + meshy.Name + ".obj";
         string mappingFilename = pathToDataset + saveTo + subFolder + "/" + meshy.Name + "/" + meshy.Name + ".txt";
         queue.Add(new Tuple<MeshData, string, Vector3[], string>(meshy, filename, originalVertices, mappingFilename));
+    }
+
+    public void saveObjectsPositionAndRotation(List<GameObject> objects)
+    {
+        clusteredPositionAndOrientation = new List<string>();
+        clusteredPositionAndOrientation.Add($"-------- Name:XXXX, Position Vector3(X, Y, Z), Rotation Quaternion(X, Y, Z, W) --------");
+        objects.ForEach(o => {
+            string name = o.GetComponent<MeshFilter>().mesh.name;
+            Vector3 position = o.transform.position;
+            Quaternion rotation = o.transform.rotation;
+            string line = $"{name},{position.x},{position.y},{position.z},{rotation.x},{rotation.y},{rotation.z},{rotation.w}";
+            clusteredPositionAndOrientation.Add(line);
+        });
+    }
+
+    public async Task s(string path)
+    {
+        await Task.Run(() =>
+        {
+            int lastSlashIndex = path.LastIndexOf('/');
+            if (lastSlashIndex >= 0)
+            {
+                path = path.Substring(0, lastSlashIndex + 1) + "PositionAndOrientation" + path.Substring(lastSlashIndex + 1);
+            }
+            string directory = Path.GetDirectoryName(path);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllLines(path, clusteredPositionAndOrientation);
+        });
     }
 
     public async Task WriteVerticesMappingToFileAsync(MeshData mesh, Vector3[] originalVertices, string path)
