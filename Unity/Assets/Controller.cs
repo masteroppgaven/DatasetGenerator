@@ -21,6 +21,7 @@ using UnityEditor;
 public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
+
     private string generatorName = "ClusteredObjectsDataset"; 
     private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
     private static string fileNameOfNewObj = "NewObj";
@@ -78,7 +79,7 @@ public class Controller : MonoBehaviour
                 UnityEngine.Random.InitState(9);
                 break;
             case "RandomVertexDisplacedObjectsDataset":
-                CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset", "NewRecalculatedNormals");
+                CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset2", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(10);
                 break;
             case "RandomRotatedNormalObjectsDataset":
@@ -223,7 +224,6 @@ public class Controller : MonoBehaviour
         List<float> displacementRanges = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f };
         objFiles.ForEach(objFile =>
         {
-            if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
             mesh.RecalculateNormals();
             Vector3[] originalVertices = mesh.vertices;
@@ -272,7 +272,6 @@ public class Controller : MonoBehaviour
         List<float> multiplierList = new List<float>() { 0.005f, 0.010f, 0.015f, 0.020f, 0.025f, 0.030f };
         objFiles.ForEach(objFile =>
         {
-            if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
             foreach (var p in freqList.Zip(multiplierList, (freq, multiplier) => new { freq, multiplier }))
             {
@@ -297,7 +296,6 @@ public class Controller : MonoBehaviour
         List<float> degreeList = new List<float>() { 2.0f, 4.0f, 6.0f, 8.0f, 10.0f };
         objFiles.ForEach(objFile =>
         {
-            if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
             foreach (float d in degreeList)
             {
@@ -336,7 +334,6 @@ public class Controller : MonoBehaviour
         int counter = 0;
         objFiles.ForEach(objFile =>
         {
-            if (counter > 1) return; // To be removed in final version
             Mesh mesh = objhandler.LoadMesh(objFile);
             // Move small distance
             Vector3 direction = UnityEngine.Random.onUnitSphere;
