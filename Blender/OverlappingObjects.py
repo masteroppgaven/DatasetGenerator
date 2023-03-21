@@ -1,13 +1,11 @@
 import os
-import sys
 import bpy
-import bmesh
 import numpy as np
 import math
 import random
 import mathutils
 import traceback
-import bmesh
+import gc
 
 def print(data):
     for window in bpy.context.window_manager.windows:
@@ -41,9 +39,13 @@ def load_obj_file(obj_file, location=(0,0,0), rotation=(0,0,0)):
         return None
 
 def clear_scene():
+    bpy.ops.object.select_all(action='DESELECT')
     for obj in bpy.data.objects:
         if obj.type == 'MESH':
-            bpy.data.objects.remove(obj)
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.delete()
+            gc.collect()
 
 def save_object(obj, file_path, vertex_map):
     file_path = os.path.abspath(file_path)
@@ -137,7 +139,6 @@ def createFilterAndMapping(obj_files, scale):
     obj3 = load_obj_file(obj_files[0])
     vertex_map = generate_vertex_mapping(obj3, result_obj)
     objects.insert(0, obj3)
-    
     # Remove and unlink all objects in obj_list except the first element which are the one we are returning.
     return result_obj, vertex_map
 
@@ -167,11 +168,16 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
     if(len(lower)<=0 and precentage<lastPresentage or scale>8 or attempts>70):
         write_to_file("halla.txt", "New filter object. Scale was:"+str(scale)+" \n\n")
         random_files = get_random_files(currentObjFile, num_files=1)
-        bpy.data.objects.remove(objects.pop(), do_unlink=True)
+        objectToRemove = objects.pop()
+        dataToRemove = objectToRemove.data
+        bpy.data.objects.remove(objectToRemove, do_unlink=True)
+        bpy.data.meshes.remove(dataToRemove)
         objects.append(addNewObjectsToScene(random_files)[0])
         scale = initial_scale
         attempts = 0
+    mesh_data = obj1.data
     bpy.data.objects.remove(obj1, do_unlink=True)
+    bpy.data.meshes.remove(mesh_data)
     return upper, lower, scale
 
 #Uses divide and conquer to create a function that will recursivly call itself until the correct radius is found for all subcategories
@@ -183,7 +189,6 @@ def recursive_filter(obj_files, scale, subcategory_ranges):
     pivot = get_percentage_changed(vertex_map)
     write_to_file("halla.txt", str(pivot)+'\n')
     upper, lower, newScale = check_subcategory_ranges(pivot, subcategory_ranges, obj1, base_dir, vertex_map, scale)
-    lastPresentage = pivot
     attempts +=1
     totalAttempts += 1
     if len(upper) != 0:
@@ -195,7 +200,6 @@ def recursive_filter(obj_files, scale, subcategory_ranges):
             write_to_file("halla.txt", "Lower "+str(s[len(s)-1])+"\n\n")
         recursive_filter(obj_files, newScale*0.94, lower)
     return
-  
 
 def write_to_file(filename, data):
     p = os.path.abspath(base_dir)
@@ -203,15 +207,10 @@ def write_to_file(filename, data):
     os.makedirs(p, exist_ok=True)
     with open(filename, 'a+') as file:
         file.write(data)
-
+    
 def get_random_files(current_file, num_files=3):
-    # Get a list of all object files except the current one
     all_files = [f for f in obj_fily if f != current_file]
-
-    # Select a unique subset of num_files random files
     random_files = random.sample(all_files, k=num_files)
-
-    # Return the selected files
     return random_files
 
 def skip(i):
@@ -258,7 +257,6 @@ for i, obj_file in enumerate(obj_fily):
     # Combine the next element with the unique random subset
     file_list = [obj_file] + get_random_files(obj_file, num_files=1) #["/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals/0003.obj"]#
     objects = addNewObjectsToScene(file_list)
-    #createFilterAndMapping(objects, initial_scale)
     try:
         recursive_filter(file_list, initial_scale, subcategories.copy())
     except Exception as e:

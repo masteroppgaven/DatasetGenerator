@@ -4,11 +4,8 @@ import bpy
 import bmesh
 import numpy as np
 import math
-import concurrent.futures
-from threading import Thread
-from concurrent.futures import ThreadPoolExecutor
-import traceback
 import random
+import gc
 
 def print(data):
     for window in bpy.context.window_manager.windows:
@@ -38,9 +35,13 @@ def load_obj_file(obj_file, location):
         return None
 
 def clear_scene():
+    bpy.ops.object.select_all(action='DESELECT')
     for obj in bpy.data.objects:
         if obj.type == 'MESH':
-            bpy.data.objects.remove(obj)
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.delete()
+            gc.collect()
 
 def save_object(obj, file_path, vertex_map):
     file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), file_path))
@@ -142,13 +143,16 @@ def createFilterAndMapping(obj_file, size):
     obj1 = load_obj_file(obj_file, (0,0,0))
     obj2 = create_rounded_cube_grid(10, 10, size, 3)
     perform_boolean_operation(obj1, obj2, 'DIFFERENCE')
+    mesh_data2= obj2.data
     bpy.data.objects.remove(obj2, do_unlink=True)
+    bpy.data.meshes.remove(mesh_data2)
     obj3 = load_obj_file(obj_file, (0,0,0))
     vertex_map = generate_vertex_mapping(obj3, obj1)
+    mesh_data3 = obj3.data
     bpy.data.objects.remove(obj3, do_unlink=True)
+    bpy.data.meshes.remove(mesh_data3)
     bpy.ops.render.render(write_still=True)
     return obj1, vertex_map
-
 
 def get_percentage_changed(vertex_map):
     num_changed_vertices = sum([1 for v in vertex_map if v == '~'])
