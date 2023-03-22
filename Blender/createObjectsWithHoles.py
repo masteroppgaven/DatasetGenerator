@@ -185,32 +185,30 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
 
 def recursive_filter(obj_file, size, subcategory_ranges):
     global attempts
+    global volume
     obj1, vertex_map = createFilterAndMapping(obj_file, size)
     pivot = get_percentage_changed(vertex_map)
     upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, output_dir, vertex_map)
     attempts +=1
-    volum = get_volume(obj1) 
-    write_to_file("halla.txt", str(volum))
     printString = f"Pivot = {str(pivot)} size = {size}\n"
     if attempts > 160:
         write_to_file("halla.txt", "Skipper skippy \n\n")
         return
     if len(upper) != 0:
-        multiplierU = new_cylinder_radius(size, volum*0.8) #DEtte er ca 4 %
+        multiplierU = new_cylinder_radius(size, volume*0.6) #DEtte er ca 4 %
         printString += "Upper "
         for s in upper:
             printString += str(s[0]) + " "
         write_to_file("halla.txt", printString + "\n")
         recursive_filter(obj_file, multiplierU, upper)
     if len(lower) != 0:
-        multiplierL = new_cylinder_radius(size, -volum*0.8) 
+        multiplierL = new_cylinder_radius(size, -volume*0.6)
         printString += "Lower " 
         for s in lower:
             printString += str(s[0]) + " "
         write_to_file("halla.txt", printString + "\n")
         recursive_filter(obj_file, multiplierL, lower)
     return
-
 
 
 def write_to_file(filename, data):
@@ -255,19 +253,16 @@ def new_cylinder_radius(old_radius, volume_change):
     old_volume = math.pi * (old_radius ** 2)
     target_volume = old_volume + volume_change
     new_radius = math.sqrt(target_volume /math.pi)
-    write_to_file("halla.txt", str(old_volume))
-    if new_radius < 0:
-        write_to_file("halla.txt", "dfoiewhfouhdsoufhsdoiuhNOOOOO" + str(old_radius))
     return new_radius
 
-def get_volume(obj):
-    #obj = load_obj_file(obj_file, (0,0,0))
+def get_volume(obj_file):
+    obj = load_obj_file(obj_file, (0,0,0))
     bm = bmesh.new()
     bm.from_mesh(obj.data)
     volume = bm.calc_volume()
     bm.clear()
     return volume
-    
+
 output_dir = "../../../Dataset/ObjectsWithHoles"
 obj_files = read_obj_files("../../../Dataset/RecalculatedNormals")
 rng_states_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir)), "rng_states.pkl")
@@ -277,41 +272,45 @@ random.seed(2)
 np.random.seed(2)
 random_state = random.getstate()
 numpy_state = np.random.get_state()
-
+volume = 0
 attempts = 0
 counter = 0
 initial_size = 0.04
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
 #print_m_values()
 
-try:
-    with open(rng_states_path, "rb") as f:
-        loaded_random_state, loaded_numpy_state = pickle.load(f)
-    random.setstate(loaded_random_state)
-    np.random.set_state(loaded_numpy_state)
-except (FileNotFoundError, TypeError, ValueError) as e:
-    print(f"An error occurred while loading the RNG states: {e}")
+if os.path.exists(rng_states_path):
+    try:
+        with open(rng_states_path, "rb") as f:
+            loaded_random_state, loaded_numpy_state = pickle.load(f)
+        random.setstate(loaded_random_state)
+        np.random.set_state(loaded_numpy_state)
+    except (FileNotFoundError, TypeError, ValueError) as e:
+        print(f"An error occurred while loading the RNG states: {e}")
+
 clear_scene()
+
 for i, obj_file in enumerate(obj_files):
-    if(counter > 1):
-        break
     if skip(i):
-        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
+        write_to_file("halla.txt", f"Skipping: {os.path.basename(obj_file)}\n")
         continue
     try:
+        volume = get_volume(obj_file)
         recursive_filter(obj_file, initial_size, subcategories.copy())
     except Exception as e:
         print(f"An exception occurred while processing {obj_file}: {str(e)}")
         print(traceback.format_exc())
         break
-    
-    # Saves tha last state and not the current. Same as with the skip function.
-    if(i != 0):
+
+    # Save the last state, not the current one (same behavior as with the skip function)
+    if i != 0:
         with open(rng_states_path, "wb") as f:
             pickle.dump((random_state, numpy_state), f)
+    
     random_state = random.getstate()
     numpy_state = np.random.get_state()
-    
-    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+
+    write_to_file("halla.txt", f"-----------Object: {os.path.basename(obj_file)} ------ Attempts {attempts}-----------------\n\n")
     counter += 1
     attempts = 0
+
