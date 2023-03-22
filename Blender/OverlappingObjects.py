@@ -1,4 +1,5 @@
 import os
+import pickle
 import bpy
 import numpy as np
 import math
@@ -151,12 +152,13 @@ def get_percentage_changed(vertex_map):
 #checks if precentage is in the subcategory range and removes the subcategory if it is. always return two lists where precentage is used as pivot to return the upper and lower part of the list
 def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, vertex_map, scale):
     global attempts
+    global lastPercentage
     upper = []
     lower = []
     to_remove = None
     for subcategory_range in subcategory_ranges:
         if precentage >= subcategory_range[0] and precentage <= subcategory_range[1]:
-            write_to_file("halla.txt", "true \n\n")
+            write_to_file("halla.txt", "True! precentage: "+str(precentage)+" Scale: "+str(scale)+" Attempts: "+str(attempts)+"\n\n")
             save_object(obj1, base_dir+"/"+str(subcategory_range[0])+"-"+str(subcategory_range[1]), vertex_map)
             to_remove = subcategory_range
         elif precentage > subcategory_range[1]:
@@ -165,8 +167,8 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
             upper.append(subcategory_range)
     if to_remove:
         subcategory_ranges.remove(to_remove)
-    if(len(lower)<=0 and precentage<lastPresentage or scale>8 or attempts>70):
-        write_to_file("halla.txt", "New filter object. Scale was:"+str(scale)+" \n\n")
+    if(len(lower)<=0 and precentage<lastPercentage or scale>8 or attempts>70):
+        write_to_file("halla.txt", "New Object! Scale: "+str(scale)+" Attempts: "+str(attempts)+"\n\n")
         random_files = get_random_files(currentObjFile, num_files=1)
         objectToRemove = objects.pop()
         dataToRemove = objectToRemove.data
@@ -185,20 +187,27 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
 def recursive_filter(obj_files, scale, subcategory_ranges):
     global attempts
     global totalAttempts
+    global lastPresentage
     obj1, vertex_map = createFilterAndMapping(obj_files, scale)
     pivot = get_percentage_changed(vertex_map)
-    write_to_file("halla.txt", str(pivot)+'\n')
+    printString = f"Pivot = {str(pivot)} \n"
     upper, lower, newScale = check_subcategory_ranges(pivot, subcategory_ranges, obj1, base_dir, vertex_map, scale)
     attempts +=1
     totalAttempts += 1
     if len(upper) != 0:
+        printString += "Upper: "
         for s in upper:
-            write_to_file("halla.txt", "Upper "+str(s[0])+"\n\n")
+            printString += str(s[len(s)-1]) + " "
         recursive_filter(obj_files, newScale*1.1, upper)
+        printString += "\n"
     if len(lower) != 0:
+        printString += "Lower: "
         for s in lower:
-            write_to_file("halla.txt", "Lower "+str(s[len(s)-1])+"\n\n")
+            printString += str(s[0]) + " "
+        printString += "\n"
         recursive_filter(obj_files, newScale*0.94, lower)
+    lastPercentage = pivot
+    write_to_file("halla.txt", printString)
     return
 
 def write_to_file(filename, data):
@@ -232,39 +241,66 @@ def skip(i):
     return False
 
 
+# Define paths
 dirname = os.path.dirname(__file__)
-base_dir = os.path.join(dirname, '../../../Dataset/OverlappingObjects2')
-# Use the absolute path to read theobj files
-obj_fily = read_obj_files(os.path.join(dirname, '../../../Dataset/RecalculatedNormals'))
+base_dir = os.path.abspath(os.path.join(dirname, '../../../Dataset/OverlappingObjects2'))
+obj_files_path = os.path.abspath(os.path.join(dirname, '../../../Dataset/RecalculatedNormals'))
+rng_states_path = os.path.join(base_dir, "rng_states.pkl")
+
+# Read obj files
+obj_fily = read_obj_files(obj_files_path)
+
+# Set seeds
 random.seed(1)
+np.random.seed(1)
+random_state = random.getstate()
+numpy_state = np.random.get_state()
+
+# Initialize variables
 counter = 0
 initial_scale = 1.5
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
 objects = []
-lastPresentage = 0
+lastPercentage = 0
 currentObjFile = obj_fily[0]
 attempts = 0
 totalAttempts = 0
 
-#print_m_values()
-#Loop over the obj_files list, passing in a list of files to the recursive_filter function
+try:
+    with open(rng_states_path, "rb") as f:
+        loaded_random_state, loaded_numpy_state = pickle.load(f)
+    random.setstate(loaded_random_state)
+    np.random.set_state(loaded_numpy_state)
+except (FileNotFoundError, TypeError, ValueError) as e:
+    print(f"An error occurred while loading the RNG states: {e}")
+
+# Process obj files
 for i, obj_file in enumerate(obj_fily):
     if skip(i):
-        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n\n")
+        write_to_file("halla.txt", f"Skipping: {os.path.basename(obj_file)}\n\n")
         continue
+
     clear_scene()
     currentObjFile = obj_file
-    # Combine the next element with the unique random subset
-    file_list = [obj_file] + get_random_files(obj_file, num_files=1) #["/Users/haakongunnarsli/masterprosjekt/dataset/RecalculatedNormals/0003.obj"]#
+    file_list = [obj_file] + get_random_files(obj_file, num_files=1)
     objects = addNewObjectsToScene(file_list)
+
     try:
         recursive_filter(file_list, initial_scale, subcategories.copy())
     except Exception as e:
         print(f"An exception occurred while processing {obj_file}: {str(e)}")
         print(traceback.format_exc())
         break
-    write_to_file("halla.txt", "-----------Object: " + objects[0].name + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+    
+    # Saves tha last state and not the current. Same as with the skip function.
+    if(i != 0):
+        with open(rng_states_path, "wb") as f:
+            pickle.dump((random_state, numpy_state), f)
+    random_state = random.getstate()
+    numpy_state = np.random.get_state()
+
+    write_to_file("halla.txt", f"-----------Object: {objects[0].name} ------ TotalAttempts: {attempts}-----------------\n\n")
     attempts = 0
     totalAttempts = 0
-    
+
 

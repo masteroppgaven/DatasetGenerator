@@ -1,5 +1,7 @@
 import os
+import pickle
 import sys
+import traceback
 import bpy
 import bmesh
 import numpy as np
@@ -22,6 +24,7 @@ def read_obj_files(path):
         for filename in files:
             if filename.endswith(".obj"):
                 obj_files.append(os.path.join(root, filename))
+    obj_files.sort()
     return obj_files
 
 def load_obj_file(obj_file, location):
@@ -115,10 +118,11 @@ def create_rounded_cube_grid(num_rows, num_cols, size, length):
             y = j * size*get_space_beween(size) * np.sqrt(3)/2
             z = 0
             shape = None
-            if size<=0.055:
+            if size<=0.06:
                 bpy.ops.mesh.primitive_cylinder_add(radius=size/2, depth=length, location=(x, y, z))
                 shape = bpy.context.object
             else:
+                write_to_file("halla.txt", "NOOO \n\n")
                 bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
                 shape = bpy.context.object
                 shape.dimensions = (size, size, length)
@@ -183,21 +187,27 @@ def recursive_filter(obj_file, size, subcategory_ranges):
     global attempts
     obj1, vertex_map = createFilterAndMapping(obj_file, size)
     pivot = get_percentage_changed(vertex_map)
-    write_to_file("halla.txt", str(pivot)+'\n')
     upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, output_dir, vertex_map)
     attempts +=1
+    volum = get_volume(obj1) 
+    write_to_file("halla.txt", str(volum))
+    printString = f"Pivot = {str(pivot)} size = {size}\n"
     if attempts > 160:
         write_to_file("halla.txt", "Skipper skippy \n\n")
         return
     if len(upper) != 0:
-        multiplierU = new_cylinder_radius(size, get_volume(obj1)*5)
+        multiplierU = new_cylinder_radius(size, volum*0.8) #DEtte er ca 4 %
+        printString += "Upper "
         for s in upper:
-            write_to_file("halla.txt", "Upper "+str(s[0])+"M = "+str(multiplierU)+ " Size = " + str(size) +"\n\n")
+            printString += str(s[0]) + " "
+        write_to_file("halla.txt", printString + "\n")
         recursive_filter(obj_file, multiplierU, upper)
     if len(lower) != 0:
-        multiplierL = new_cylinder_radius(size, (-get_volume(obj1)/5))
+        multiplierL = new_cylinder_radius(size, -volum*0.8) 
+        printString += "Lower " 
         for s in lower:
-            write_to_file("halla.txt", "Lower "+str(s[0])+"M = "+str(multiplierL)+ " Size = " + str(size) +"\n\n")
+            printString += str(s[0]) + " "
+        write_to_file("halla.txt", printString + "\n")
         recursive_filter(obj_file, multiplierL, lower)
     return
 
@@ -210,14 +220,25 @@ def write_to_file(filename, data):
     with open(filename, 'a+') as file:
         file.write(data)
 
-def skip(obj):
+def skip(i):
     p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
-    # Create the directory for the object if it does not already exist
+    next_obj_file = None
+    if i + 1 < len(obj_files):
+        next_obj_file = obj_files[i + 1]
+    
+    if next_obj_file == None:
+        return False
+    
+    count = 0
     for root, dirs, files in os.walk(p):
         for filename in files:
-            if filename == os.path.basename(obj):
-                return True
+            if os.path.basename(next_obj_file) == os.path.basename(filename):
+                count += 1
+                if count == len(subcategories):
+                    return True
     return False
+
+
 
 def print_m_values():
     clear_scene()
@@ -226,7 +247,7 @@ def print_m_values():
     create_rounded_cube_grid(10, 10, 0.055, 3)
     for size in sizes:
         m = new_cylinder_radius(size, get_volume(obj)*5)
-        m2 = new_cylinder_radius(size, (-get_volume(obj)/5))
+        m2 = new_cylinder_radius(size, (-get_volume(obj)*0.05))
         b = get_bevel_width(size)
         print(f"size={size}, m={m}, m2 = {m2}, b ={b}")
 
@@ -234,51 +255,63 @@ def new_cylinder_radius(old_radius, volume_change):
     old_volume = math.pi * (old_radius ** 2)
     target_volume = old_volume + volume_change
     new_radius = math.sqrt(target_volume /math.pi)
+    write_to_file("halla.txt", str(old_volume))
+    if new_radius < 0:
+        write_to_file("halla.txt", "dfoiewhfouhdsoufhsdoiuhNOOOOO" + str(old_radius))
     return new_radius
 
 def get_volume(obj):
+    #obj = load_obj_file(obj_file, (0,0,0))
     bm = bmesh.new()
     bm.from_mesh(obj.data)
     volume = bm.calc_volume()
     bm.clear()
     return volume
     
-
-
 output_dir = "../../../Dataset/ObjectsWithHoles"
 obj_files = read_obj_files("../../../Dataset/RecalculatedNormals")
+rng_states_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir)), "rng_states.pkl")
+
 print(obj_files[1])
 random.seed(2)
+np.random.seed(2)
+random_state = random.getstate()
+numpy_state = np.random.get_state()
+
 attempts = 0
 counter = 0
 initial_size = 0.04
 subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
-print_m_values()
+#print_m_values()
 
-#clear_scene()
-
-#for obj_file in obj_files:
-#    if(counter > 1):
-#        break
-#    if skip(obj_file):
-#        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
-#        continue
-#    try:
-#        recursive_filter(obj_file, initial_size, subcategories.copy())
-#    except Exception as e:
-#        print(f"An exception occurred while processing {obj_file}: {str(e)}")
-#        print(traceback.format_exc())
-#        break
-#    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
-#    counter += 1
-#    attempts = 0
-
-
-#testObj, vertex_map = createFilterAndMapping(obj_files[0], initial_size)
-#print(str(get_percentage_changed(vertex_map)))
-
-#x = 0.005
-#print("----------------NyTest------------")
-#test_cases = [0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.055, 0.0575, 0.05875, 0.06]
-#for x in test_cases:
-#    print("[x = {:.3f}, k = {:.2f}]".format(x, get_space_beween(x)))
+try:
+    with open(rng_states_path, "rb") as f:
+        loaded_random_state, loaded_numpy_state = pickle.load(f)
+    random.setstate(loaded_random_state)
+    np.random.set_state(loaded_numpy_state)
+except (FileNotFoundError, TypeError, ValueError) as e:
+    print(f"An error occurred while loading the RNG states: {e}")
+clear_scene()
+for i, obj_file in enumerate(obj_files):
+    if(counter > 1):
+        break
+    if skip(i):
+        write_to_file("halla.txt", "Skipping: " + os.path.basename(obj_file) + "\n")
+        continue
+    try:
+        recursive_filter(obj_file, initial_size, subcategories.copy())
+    except Exception as e:
+        print(f"An exception occurred while processing {obj_file}: {str(e)}")
+        print(traceback.format_exc())
+        break
+    
+    # Saves tha last state and not the current. Same as with the skip function.
+    if(i != 0):
+        with open(rng_states_path, "wb") as f:
+            pickle.dump((random_state, numpy_state), f)
+    random_state = random.getstate()
+    numpy_state = np.random.get_state()
+    
+    write_to_file("halla.txt", "-----------Object: " + os.path.basename(obj_file) + " ------ Attempts" +str(attempts)+"-----------------\n\n")
+    counter += 1
+    attempts = 0
