@@ -90,6 +90,10 @@ public class Controller : MonoBehaviour
                 CreateRayCastedObjects("RayCastedObjects", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(12);
                 break;
+            case "FalsePostiveTestDataset":
+                CreateFalsePostiveTestDataset("FalsePostiveTestDataset", "NewRecalculatedNormals");
+                UnityEngine.Random.InitState(13);
+                break; 
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
                 //System.Diagnostics.Process.Start("open", "-a " + pathToPreview + " " + pathToDataset + saveTo + fileNameOfNewObj + ".obj");
@@ -353,6 +357,23 @@ public class Controller : MonoBehaviour
         objhandler.CompleteWriting();
     }
 
+
+    public void CreateFalsePostiveTestDataset(String saveTo, String loadFrom)
+    {
+        objhandler = new ObjHandler(saveTo, pathToDataset, true);
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        int counter = 0;
+        objFiles.ForEach(objFile =>
+        {
+            Mesh mesh = objhandler.LoadMesh(objFile);
+            // Move small distance
+            int randomObject = Utilities.GenerateRandomNumbers(0, objFiles.Count, 1, counter)[0];
+            Mesh randomMesh = objhandler.LoadMesh(objFiles[counter]);
+            objhandler.saveToFile(new MeshData(randomMesh), mesh.vertices);
+            counter++;
+        });
+        objhandler.CompleteWriting();
+    }
 
     public void CreateRotatedObjectsDatset(String saveTo, String loadFrom)
     {

@@ -161,6 +161,7 @@ public class Utilities
         }
         mesh.vertices = vertices;
         mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
         return mesh;
     }
 
