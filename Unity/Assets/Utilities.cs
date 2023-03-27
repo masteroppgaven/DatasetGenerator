@@ -465,77 +465,27 @@ public class Utilities
     public static Mesh GetNonHitMesh(Mesh mesh, LayerMask layerMask)
     {
         List<Vector3> newVertices = new List<Vector3>();
+        Vector3 rayStart1 = new Vector3(0.01f, 1.0f, -0.01f);
+        Vector3 rayStart2 = new Vector3(-0.01f, 1.0f, 0.01f);
+
         for (int i = 0; i < mesh.triangles.Length; i += 3)
         {
-            Vector3 rayStart = new(0.01f, 1.0f, -0.01f);
-            Vector3 rayStart2 = new(-0.01f, 1.0f, 0.01f);
             Vector3 p1 = mesh.vertices[mesh.triangles[i]];
             Vector3 p2 = mesh.vertices[mesh.triangles[i + 1]];
             Vector3 p3 = mesh.vertices[mesh.triangles[i + 2]];
 
-            Vector3 direction = DirectionToPointToTriangle(rayStart, p1, p2, p3);
+            Vector3 direction1 = DirectionToPointToTriangle(rayStart1, p1, p2, p3);
             Vector3 direction2 = DirectionToPointToTriangle(rayStart2, p1, p2, p3);
-            //Debug.Log($"dirx = {direction.x}, p1x = {p1.x} p2x = {p2.x} p3.x = {p3.x}");
-            //Ray ray = new Ray(rayStart, direction);
-            RaycastHit hitInfo;
 
-            if (Physics.Raycast(rayStart, direction, out hitInfo, 20f))
-            {
-                MeshCollider meshCollider = hitInfo.collider as MeshCollider;
-                Debug.DrawRay(rayStart, direction * hitInfo.distance, Color.red);
-                Vector3[] colliderVertices = meshCollider.sharedMesh.vertices;
-                if (colliderVertices.Contains(p1))
-                {
-                    if (!newVertices.Contains(p1))
-                    {
-                        newVertices.Add(p1);
-                    }
-                    if (!newVertices.Contains(p2))
-                    {
-                        newVertices.Add(p2);
-                    }
-                    if (!newVertices.Contains(p3))
-                    {
-                        newVertices.Add(p3);
-                    }
-                }
-            }
-            else
-            {
-                Debug.DrawRay(rayStart, direction * 2, Color.white);
-                Debug.Log("empty");
-            }
-
-            if (Physics.Raycast(rayStart2, direction2, out hitInfo, 20f))
-            {
-                MeshCollider meshCollider = hitInfo.collider as MeshCollider;
-                Debug.DrawRay(rayStart2, direction2 * hitInfo.distance, Color.red);
-                Vector3[] colliderVertices = meshCollider.sharedMesh.vertices;
-                if (colliderVertices.Contains(p1))
-                {
-                    if (!newVertices.Contains(p1))
-                    {
-                        newVertices.Add(p1);
-                    }
-                    if (!newVertices.Contains(p2))
-                    {
-                        newVertices.Add(p2);
-                    }
-                    if (!newVertices.Contains(p3))
-                    {
-                        newVertices.Add(p3);
-                    }
-                }
-            }
-            else
-            {
-                Debug.DrawRay(rayStart2, direction2 * 2, Color.white);
-                Debug.Log("empty");
-            }
-
+            AddVerticesIfRaycastHit(rayStart1, direction1, 20f, p1, p2, p3, newVertices);
+            AddVerticesIfRaycastHit(rayStart2, direction2, 20f, p1, p2, p3, newVertices);
         }
-        if (newVertices.Count < 1) return new Mesh();
-        Debug.Break();
+
+        if (newVertices.Count < 1)
+        {
+            return new Mesh();
+        }
+
         Mesh newMesh = new Mesh();
         newMesh.vertices = newVertices.ToArray();
         newMesh.triangles = GetTrianglesWithSubsetVertices(mesh, newVertices).ToArray();
@@ -545,8 +495,30 @@ public class Utilities
         return newMesh;
     }
 
+    private static void AddVerticesIfRaycastHit(Vector3 rayStart, Vector3 direction, float maxDistance, Vector3 p1, Vector3 p2, Vector3 p3, List<Vector3> newVertices)
+    {
+        RaycastHit hitInfo;
 
-    public static List<int> GetTrianglesWithSubsetVertices(Mesh originalMesh, List<Vector3> newVertices)
+        if (Physics.Raycast(rayStart, direction, out hitInfo, maxDistance))
+        {
+            MeshCollider meshCollider = hitInfo.collider as MeshCollider;
+            Vector3[] colliderVertices = meshCollider.sharedMesh.vertices;
+
+            if (colliderVertices.Contains(p1) || colliderVertices.Contains(p2) || colliderVertices.Contains(p3))
+            {
+                if (!newVertices.Contains(p1)) newVertices.Add(p1);
+                if (!newVertices.Contains(p2)) newVertices.Add(p2);
+                if (!newVertices.Contains(p3)) newVertices.Add(p3);
+            }
+        }
+    }
+
+    // DirectionToPointToTriangle and GetTrianglesWithSubsetVertices methods should remain the same
+
+
+
+
+public static List<int> GetTrianglesWithSubsetVertices(Mesh originalMesh, List<Vector3> newVertices)
     {
         Dictionary<Vector3, int> vertexIndices = new Dictionary<Vector3, int>();
         for (int i = 0; i < newVertices.Count; i++)
