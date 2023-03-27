@@ -10,7 +10,7 @@ def clear_scene():
 
 outputCSV = "dataset,category,object,volume,x,y,z\n"
 
-fileFolder = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/OverlappingObjects"
+fileFolder = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/RandomVertexDisplacedObjectsDataset"
 
 for catRoot, catDirs, catFiles in os.walk(fileFolder):
     for dirs in sorted(catDirs):
@@ -24,7 +24,7 @@ for catRoot, catDirs, catFiles in os.walk(fileFolder):
                 bm = bmesh.new()
                 bm.from_mesh(object.data)
 
-                output = "OverlappingObjects," + dirs + "," + obj + "," + str(bm.calc_volume()) + "," +  str(object.dimensions.x) + "," + str(object.dimensions.y) + "," + str(object.dimensions.z) + "\n"
+                output = "RandomVertexDisplacedObjectsDataset," + dirs + "," + obj + "," + str(bm.calc_volume()) + "," +  str(object.dimensions.x) + "," + str(object.dimensions.y) + "," + str(object.dimensions.z) + "\n"
 
                 print(output)
 
@@ -33,7 +33,7 @@ for catRoot, catDirs, catFiles in os.walk(fileFolder):
                 bm.clear()
 
 
-file = open("OverlappingObjects_volumes", "w")
+file = open("RandomVertexDisplacedObjectsDataset_volumes.csv", "w")
 for row in outputCSV:
     file.write(row)
 file.close()
