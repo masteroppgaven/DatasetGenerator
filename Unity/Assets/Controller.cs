@@ -22,7 +22,7 @@ public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
 
-    private string generatorName = "FrustrumCullingObjectsDataset";
+    private string generatorName = "RayCastedObjects";
     private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 5;//Number of objects that will be created.
@@ -62,7 +62,7 @@ public class Controller : MonoBehaviour
                 CreateRotatedObjectsDatset("RotatedObjectsDatset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(5);
                 break;
-            case "MovedObjectsDataset":
+            case "MovedObjectsDataset"://done
                 CreateMovedObjectsDataset("MovedObjectsDataset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(6);
                 break;
@@ -70,15 +70,15 @@ public class Controller : MonoBehaviour
                 CreateClusteredObjectsDataset("ClusteredObjectsDataset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(7);
                 break;
-            case "RippledObjectsDataset":
+            case "RippledObjectsDataset"://done
                 CreateRippledObjectsDataset("RippledObjectsDataset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(8);
                 break;
-            case "TwistedObjectsDataset":
+            case "TwistedObjectsDataset": //done
                 CreateTwistedObjectsDataset("TwistedObjectsDataset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(9);
                 break;
-            case "RandomVertexDisplacedObjectsDataset":
+            case "RandomVertexDisplacedObjectsDataset"://done
                 CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset2", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(10);
                 break;
@@ -86,8 +86,8 @@ public class Controller : MonoBehaviour
                 CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(11);
                 break;
-            case "FrustrumCullingObjectsDataset":
-                CreateFrustrumCullingObjectsObjectsDataset("FrustrumCullingObjectsDataset", "NewRecalculatedNormals");
+            case "RayCastedObjects":
+                CreateRayCastedObjects("RayCastedObjects", "NewRecalculatedNormals");
                 UnityEngine.Random.InitState(12);
                 break;
             default:
@@ -135,25 +135,24 @@ public class Controller : MonoBehaviour
 
 
 
-    public void CreateFrustrumCullingObjectsObjectsDataset(String saveTo, String loadFrom)
+    public void CreateRayCastedObjects(String saveTo, String loadFrom)
     {
-        objhandler = new ObjHandler(saveTo, pathToDataset);
+        objhandler = new ObjHandler(saveTo, pathToDataset,  true);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         objFiles.ForEach(objFile =>
         {
-            if (counter >= 1) return;//To be removed in final version
-            mesh = objhandler.LoadMesh(objFiles[0]);
+            mesh = objhandler.LoadMesh(objFiles[4]);
             mesh.RecalculateNormals();
-            //mesh = Utilities.TransformMesh(mesh, 100, 100, 100);
+
             obj = Utilities.createGameObjectFromMesh(mesh);
             Utilities.AddCollidersToMesh(obj);
-            Utilities.WaitForNextFixedUpdate();
-            Camera.main.transform.position = new(0.0f, 0.0f, 0.5f);
-            Camera.main.transform.LookAt(obj.transform);
-
             Mesh newMesh = Utilities.GetNonHitMesh(mesh, 10);
+
+            //Camera.main.transform.position = new(0.0f, 0.0f, 0.5f);
+            //Camera.main.transform.LookAt(obj.transform);
+
             objhandler.saveToFile(new MeshData(newMesh), mesh.vertices);
-            //GameObject.Destroy(obj);
+            GameObject.Destroy(obj);
             counter++;
         });
         objhandler.CompleteWriting();
