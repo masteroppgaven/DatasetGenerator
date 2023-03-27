@@ -123,15 +123,13 @@ public class Utilities
     }
 
     //remove gameObjects from the scene
-    public static void removeGameObjects(List<GameObject> gameObjects)
+    public static void RemoveGameObjects(List<GameObject> gameObjects)
     {
-        for (int i = gameObjects.Count - 1; i >= 0; i--)
+        foreach (GameObject gameObject in gameObjects)
         {
-            GameObject gameObject = gameObjects[i];
-            GameObject.Destroy(gameObject);
-            gameObjects.RemoveAt(i);
+            GameObject.DestroyImmediate(gameObject);
         }
-
+        gameObjects.Clear();
     }
 
     public static Mesh combineMeshes(List<GameObject> gameObjects)
@@ -420,12 +418,12 @@ public class Utilities
         return (float)(radian * (180.0 / Math.PI));
     }
 
-
-    public static void AddCollidersToMesh(GameObject gameObject)
+    public static List<GameObject> AddCollidersToMesh(GameObject gameObject)
     {
         MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
         Mesh mesh = meshFilter.mesh;
         int[] triangles = mesh.triangles;
+        List<GameObject> faces = new List<GameObject>();
 
         for (int i = 0; i < triangles.Length; i += 3)
         {
@@ -442,24 +440,26 @@ public class Utilities
             Mesh faceMesh = new Mesh();
             faceMesh.vertices = new Vector3[] { p1, p2, p3, p4, p5, p6 };
             faceMesh.triangles = new int[] {
-                0, 1, 2,
-                2, 3, 0,
-                1, 4, 2,
-                2, 4, 3,
-                3, 4, 5,
-                3, 5, 0};
+            0, 1, 2,
+            2, 3, 0,
+            1, 4, 2,
+            2, 4, 3,
+            3, 4, 5,
+            3, 5, 0};
             faceMesh.RecalculateNormals();
             faceMesh.normals[0] = mesh.normals[triangles[i]];
             faceMesh.normals[1] = mesh.normals[triangles[i + 1]];
             faceMesh.normals[2] = mesh.normals[triangles[i + 2]];
-            //addRigidbody(face, false, false);
             MeshCollider collider = face.AddComponent<MeshCollider>();
             collider.cookingOptions = 0;
             collider.sharedMesh = faceMesh;
-            //collider.convex = true;
             face.isStatic = true;
+            faces.Add(face);
         }
+
+        return faces;
     }
+
 
 
     public static Mesh GetNonHitMesh(Mesh mesh, LayerMask layerMask)

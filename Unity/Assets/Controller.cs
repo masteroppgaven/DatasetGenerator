@@ -115,7 +115,7 @@ public class Controller : MonoBehaviour
                     Mesh combinedMesh = Utilities.combineMeshes(objects);
                     objhandler.saveObjectsPositionAndRotation(objects);//Because we are saving position and orientation will this function take vare of hiding and destroying objects.
                     objhandler.saveToFile(new MeshData(combinedMesh), ov, clusterSize.ToString());
-                    Utilities.removeGameObjects(objects);
+                    Utilities.RemoveGameObjects(objects);
                     CreateClusteredObjectsDatasetHelper();
                     break;
                 }
@@ -145,9 +145,9 @@ public class Controller : MonoBehaviour
             mesh.RecalculateNormals();
 
             obj = Utilities.createGameObjectFromMesh(mesh);
-            Utilities.AddCollidersToMesh(obj);
+            List<GameObject> faceColliders = Utilities.AddCollidersToMesh(obj);
             Mesh newMesh = Utilities.GetNonHitMesh(mesh, 10);
-
+            Utilities.RemoveGameObjects(faceColliders);
             //Camera.main.transform.position = new(0.0f, 0.0f, 0.5f);
             //Camera.main.transform.LookAt(obj.transform);
 
@@ -403,7 +403,7 @@ public class Controller : MonoBehaviour
             Utilities.GenerateRandomNumbers(0, (objFiles.Count - 1), (objFiles.Count) < numberOfObjects ? (objFiles.Count - 1) : (numberOfObjects - 1), counter).ForEach(randomIndex => meshes.Add(objhandler.LoadMesh(objFiles[randomIndex])));
             List<GameObject> gameobjects = Utilities.createGameObjectsFromMeshes(meshes);
             Mesh combinedMesh = Utilities.combineMeshes(gameobjects);
-            Utilities.removeGameObjects(gameobjects);
+            Utilities.RemoveGameObjects(gameobjects);
             objhandler.saveToFile(new MeshData(combinedMesh), meshes[0].vertices);
             counter++;
         });
