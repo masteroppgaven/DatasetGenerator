@@ -678,7 +678,57 @@ public static List<int> GetTrianglesWithSubsetVertices(Mesh originalMesh, List<V
     }
 
 
+    public static bool skipObject(List<string> objFiles, string path, int counter)
+    {
+        if (!Directory.Exists(path))
+        {
+            return false;
+        }
+        string[] subCategories = Directory.GetDirectories(path);
+        bool skip = false;
+        foreach (string subCategory in subCategories)
+        {
+            string filePath = subCategory + "/" + Path.GetFileNameWithoutExtension(objFiles[counter])+"/" + Path.GetFileName(objFiles[counter]);
+            if (File.Exists(filePath))
+            {
+                skip = true;
+            }
+            else
+            {
+                skip = false;
+                break;
+            }
+        }
+        return skip;
+    }
 
+
+
+    public static void SaveRandomStateToFile(UnityEngine.Random.State state, string path)
+    {
+        path += "/rng_states.json";
+        if (!Directory.Exists(Path.GetDirectoryName(path)))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+        }
+        string json = JsonUtility.ToJson(state);
+        File.WriteAllText(path, json);
+    }
+
+    public static UnityEngine.Random.State LoadRandomStateFromFileOrInit(string path, int defaultSeed)
+    {
+        if (Directory.Exists(path) && File.Exists(path+"/rng_states.json"))
+        {
+            string json = File.ReadAllText(path+"/rng_states.json");
+            UnityEngine.Random.State savedState = JsonUtility.FromJson<UnityEngine.Random.State>(json);
+            UnityEngine.Random.state = savedState;
+        }
+        else
+        {
+            UnityEngine.Random.InitState(defaultSeed);
+        }
+        return UnityEngine.Random.state;
+    }
 
 }
 
