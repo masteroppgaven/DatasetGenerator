@@ -97,55 +97,62 @@ def generate_vertex_mapping(obj1, obj2):
 
     return np.array(C)
 
-def get_space_beween(x):
-    return 12.0 / (1 + 11 * (x - 0.005) / (0.06 - 0.005))
+def get_space_between(x):
+    global max_radius
+    return 12.0 / (1 + 11 * x / max_radius)
 
-def get_bevel_width(x):
-    if x < 0.055:
-        return 1.0
-    elif x >= 0.055:
-        k = 1.0 - ((x - 0.055) / 0.1) ** 2
-        return max(0.0, k)
-    else:
-        return 0.0
 
-def create_rounded_cube_grid(num_rows, num_cols, size, length):
+def create_cylinder_grid_bounding_object(obj, radius, length):
+    global initial_radius
     shapes = []
-    #Every other row is shifted by half the size of the cylinder
-    for i in range(num_rows):
-        for j in range(num_cols):
-            x = i * size*get_space_beween(size) + (j % 2) * size*get_space_beween(size)/2
-            y = j * size*get_space_beween(size) * np.sqrt(3)/2
-            z = 0
-            shape = None
-            if size<=0.06:
-                bpy.ops.mesh.primitive_cylinder_add(radius=size/2, depth=length, location=(x, y, z))
-                shape = bpy.context.object
+    space_between = get_space_between(radius)
+    initial_space_between = get_space_between(initial_radius)
+    print(f"Radius= {str(radius)}")
+    obj_dimensions = obj.dimensions
+    num_rows = int(np.ceil(obj_dimensions.x / (initial_radius * initial_space_between))) + 1
+    num_cols = int(np.ceil(obj_dimensions.z / (initial_radius * initial_space_between * np.sqrt(3) / 2))) + 1
+
+    # Choose the largest dimension as the inner loop
+    if obj_dimensions.x > obj_dimensions.z:
+        outer_range = num_cols
+        inner_range = num_rows
+        inner_dim = 'x'
+    else:
+        outer_range = num_rows
+        inner_range = num_cols
+        inner_dim = 'z'
+
+    for i in range(outer_range):
+        for j in range(inner_range):
+            if inner_dim == 'x':
+                x = obj.location.x + j * radius * space_between + (i % 2) * radius * space_between / 2
+                y = obj.location.y + i * radius * space_between * np.sqrt(3) / 2
             else:
-                write_to_file("halla.txt", "NOOO \n\n")
-                bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
-                shape = bpy.context.object
-                shape.dimensions = (size, size, length)
-            # Add bevel modifier to round the edges
-                bevel_modifier = shape.modifiers.new(name='Bevel', type='BEVEL')
-                bevel_modifier.segments = 10
-                bevel_modifier.width = get_bevel_width(size)
+                x = obj.location.x + i * radius * space_between * np.sqrt(3) / 2
+                y = obj.location.y + j * radius * space_between + (i % 2) * radius * space_between / 2
+
+            z = 0
+            bpy.ops.mesh.primitive_cylinder_add(radius=radius / 2, depth=length, location=(x, y, z))
+            shape = bpy.context.object
             shapes.append(shape)
-    # Select all cubes and join them into a single mesh
+
     for shape in shapes:
         shape.select_set(True)
+
     bpy.context.view_layer.objects.active = shapes[0]
     bpy.ops.object.join()
-    # Center the combined mesh at (0, 0, 0)
     bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
-    bpy.context.object.location = (0, -(num_rows*size*get_space_beween(size)/2.5), 0)
-    # Return the combined mesh object
+
+    # Set the location of the grid to match the object's center in the Y axis
+    bpy.context.object.location.x = obj.location.x
+    bpy.context.object.location.y = - ((num_cols-1) * radius * space_between)/ 2
     return bpy.context.object
 
-def createFilterAndMapping(obj_file, size):
+
+def createFilterAndMapping(obj_file, radius):
     clear_scene()
     obj1 = load_obj_file(obj_file, (0,0,0))
-    obj2 = create_rounded_cube_grid(10, 10, size, 3)
+    obj2 = create_cylinder_grid_bounding_object(obj1, radius, 1)
     perform_boolean_operation(obj1, obj2, 'DIFFERENCE')
     mesh_data2= obj2.data
     bpy.data.objects.remove(obj2, do_unlink=True)
@@ -164,13 +171,14 @@ def get_percentage_changed(vertex_map):
 
 #checks if precentage is in the subcategory range and removes the subcategory if it is. always return two lists where precentage is used as pivot to return the upper and lower part of the list
 def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, vertex_map):
+    global attempts
     upper = []
     lower = []
     to_remove = None
     for subcategory_range in subcategory_ranges:
         if precentage >= subcategory_range[0] and precentage <= subcategory_range[1]:
             write_to_file("halla.txt", "true \n\n")
-            #Extends base_dir path with name of subcategory
+            attempts = 1
             save_object(obj1, base_dir+"/"+str(subcategory_range[0])+"-"+str(subcategory_range[1]), vertex_map)
             to_remove = subcategory_range
         elif precentage > subcategory_range[1]:
@@ -183,33 +191,47 @@ def check_subcategory_ranges(precentage, subcategory_ranges, obj1, base_dir, ver
 
 #Uses divide and conquer to create a function that will recursivly call itself until the correct radius is found for all subcategories
 
-def recursive_filter(obj_file, size, subcategory_ranges):
+def recursive_filter(obj_file, radius, subcategory_ranges):
     global attempts
-    global volume
-    obj1, vertex_map = createFilterAndMapping(obj_file, size)
+    global max_attempts
+    global total_attempts
+    obj1, vertex_map = createFilterAndMapping(obj_file, radius)
     pivot = get_percentage_changed(vertex_map)
     upper, lower = check_subcategory_ranges(pivot, subcategory_ranges, obj1, output_dir, vertex_map)
     attempts +=1
-    printString = f"Pivot = {str(pivot)} size = {size}\n"
-    if attempts > 160:
+    total_attempts +=1
+    printString = f"Pivot = {str(pivot)} radius = {radius} " 
+    if attempts > max_attempts:
         write_to_file("halla.txt", "Skipper skippy \n\n")
         return
     if len(upper) != 0:
-        multiplierU = new_cylinder_radius(size, volume*0.6) #DEtte er ca 4 %
+        multiplierU = calculate_fraction(attempts, max_attempts, 1.05)
+        printString += f"upper linear decay = {multiplierU} radius = {radius*multiplierU}\n"
         printString += "Upper "
         for s in upper:
             printString += str(s[0]) + " "
         write_to_file("halla.txt", printString + "\n")
-        recursive_filter(obj_file, multiplierU, upper)
+        recursive_filter(obj_file, radius*multiplierU, upper)
     if len(lower) != 0:
-        multiplierL = new_cylinder_radius(size, -volume*0.6)
+        multiplierL = calculate_fraction(attempts, max_attempts, 0.94)
+        printString += f"upper linear decay = {multiplierL} radius = {radius*multiplierL}\n"
         printString += "Lower " 
         for s in lower:
             printString += str(s[0]) + " "
         write_to_file("halla.txt", printString + "\n")
-        recursive_filter(obj_file, multiplierL, lower)
+        recursive_filter(obj_file, radius*multiplierL, lower)
     return
 
+def calculate_fraction(a, max_a, x, scaling_factor=2):
+    if a <= 15:
+        return x
+    adjusted_a = a - 15
+    adjusted_max_a = max_a - 15
+    fraction = adjusted_a / adjusted_max_a
+    exponent = -scaling_factor * math.log2(x) * fraction
+    result = x * math.exp(-exponent) + (1 - math.exp(-exponent))
+
+    return result
 
 def write_to_file(filename, data):
     p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
@@ -239,15 +261,28 @@ def skip(i):
 
 
 def print_m_values():
+    global volume
+    global max_radius
+    global initial_radius
     clear_scene()
-    obj = load_obj_file(obj_files[0], (0,0,0))
-    sizes = [0.01, 0.02, 0.03, 0.04, 0.045, 0.05, 0.055, 0.056, 0.057, 0.058, 0.059,  0.06, 0.07, 0.08, 0.09, 0.1]
-    create_rounded_cube_grid(10, 10, 0.055, 3)
-    for size in sizes:
-        m = new_cylinder_radius(size, get_volume(obj)*5)
-        m2 = new_cylinder_radius(size, (-get_volume(obj)*0.05))
-        b = get_bevel_width(size)
-        print(f"size={size}, m={m}, m2 = {m2}, b ={b}")
+    file = obj_files[20]
+    obj = load_obj_file(file, (0,0,0))
+    #sizes = [0.01]
+    sizes = [0.01, 0.02, 0.05, 0.07]
+    volume = get_volume(file)
+    initial_radius, max_radius = get_initial_and_max_radius(file)
+    create_cylinder_grid_bounding_object(obj, initial_radius, 0.5)
+#    m = initial_radius
+#    m2 = initial_radius
+#    for size in sizes:
+#        m*=1.05
+#        m2*=0.94
+#        obj1, vertex_map1 = createFilterAndMapping(file, m)
+#        pivot1 = get_percentage_changed(vertex_map1)
+#        obj2, vertex_map2 = createFilterAndMapping(file, m2)
+#        pivot2 = get_percentage_changed(vertex_map2)
+#      
+#        print(f"size={size}, m={m}, m2 = {m2} pivot1 = {pivot1} pivot2 = {pivot2}")
 
 def new_cylinder_radius(old_radius, volume_change):
     old_volume = math.pi * (old_radius ** 2)
@@ -257,26 +292,57 @@ def new_cylinder_radius(old_radius, volume_change):
 
 def get_volume(obj_file):
     obj = load_obj_file(obj_file, (0,0,0))
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    volume = bm.calc_volume()
-    bm.clear()
-    return volume
+    v = get_bounding_box_volume(obj)
+    mesh_data= obj.data
+    bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.data.meshes.remove(mesh_data)
+    print("volume =" + str(v))
+    return v
+
+#initial radius fraction makes the radius smaler and the max radius fraction will result in change of number of cylinders
+def get_initial_and_max_radius(obj_file, initial_radius_fraction=0.1, max_radius_fraction=0.25):
+    obj = load_obj_file(obj_file, (0,0,0))
+    obj_dimensions = obj.dimensions
+    avg_dimension = (obj_dimensions.x + obj_dimensions.y + obj_dimensions.z) / 3
+
+    initial_radius = avg_dimension * initial_radius_fraction
+    max_radius = avg_dimension * max_radius_fraction
+
+    return initial_radius, max_radius
+
+def get_bounding_box_volume(obj):
+    bounding_box = obj.bound_box
+    min_x = min([v[0] for v in bounding_box])
+    max_x = max([v[0] for v in bounding_box])
+    min_y = min([v[1] for v in bounding_box])
+    max_y = max([v[1] for v in bounding_box])
+    min_z = min([v[2] for v in bounding_box])
+    max_z = max([v[2] for v in bounding_box])
+
+    width = max_x - min_x
+    length = max_y - min_y
+    height = max_z - min_z
+
+    v = width * length * height
+    return v
 
 output_dir = "../../../Dataset/ObjectsWithHoles"
-obj_files = read_obj_files("../../../Dataset/RecalculatedNormals")
+obj_files = read_obj_files("../../../Dataset/NewRecalculatedNormals")
 rng_states_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir)), "rng_states.pkl")
 
-print(obj_files[1])
+
 random.seed(2)
 np.random.seed(2)
 random_state = random.getstate()
 numpy_state = np.random.get_state()
-volume = 0
+#volume = 0
+max_attempts = 40
+total_attempts = 0
 attempts = 0
 counter = 0
-initial_size = 0.04
-subcategories = [(5.1, 15.0), (15.1, 25.0), (25.1, 35.0), (35.1, 45.0), (45.1, 55.0), (55.1, 65.0), (65.1, 75.0), (75.1, 85.0), (85.1, 95.1)]
+initial_radius = 0
+max_radius = 0
+subcategories = [(10.1, 20.0), (20.1, 30.0), (30.1, 40.0), (40.1, 50.0), (50.1, 60.0), (60.1, 70.0), (70.1, 80.0), (80.1, 90.0)]
 #print_m_values()
 
 if os.path.exists(rng_states_path):
@@ -295,8 +361,9 @@ for i, obj_file in enumerate(obj_files):
         write_to_file("halla.txt", f"Skipping: {os.path.basename(obj_file)}\n")
         continue
     try:
-        volume = get_volume(obj_file)
-        recursive_filter(obj_file, initial_size, subcategories.copy())
+        #volume = get_volume(obj_file)
+        initial_radius, max_radius = get_initial_and_max_radius(obj_file)
+        recursive_filter(obj_file, initial_radius, subcategories.copy())
     except Exception as e:
         print(f"An exception occurred while processing {obj_file}: {str(e)}")
         print(traceback.format_exc())
@@ -310,7 +377,8 @@ for i, obj_file in enumerate(obj_files):
     random_state = random.getstate()
     numpy_state = np.random.get_state()
 
-    write_to_file("halla.txt", f"-----------Object: {os.path.basename(obj_file)} ------ Attempts {attempts}-----------------\n\n")
+    write_to_file("halla.txt", f"-----------Object: {os.path.basename(obj_file)} ------ Attempts {total_attempts}-----------------\n\n")
     counter += 1
     attempts = 0
+    total_attempt = 0
 

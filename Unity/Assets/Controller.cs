@@ -22,10 +22,10 @@ public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
 
-    private string generatorName = "RayCastedObjects";
-    private static string pathToDataset = "../../dataset/";//"/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"
+    private string generatorName = "ClusteredObjectsDataset";
+    private static string pathToDataset = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/";
     private static string fileNameOfNewObj = "NewObj";
-    private static int numberOfObjects = 5;//Number of objects that will be created.
+    private static int numberOfObjects = 999999999;//Number of objects that will be created.
     private static int clusterSize = 100;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private GameObject obj;
@@ -52,38 +52,38 @@ public class Controller : MonoBehaviour
             case "UnfilteredObjectsWithRecalulatedNormals":
                 CreateUnfilteredObjectsWithRecalulatedNormals("NewRecalculatedNormals8", "Backup");
                 break;
-            case "ResizedObjectsDatset":
-                CreateResizedObjectsDatset("ResizedObjects", "NewRecalculatedNormals");
+            case "ResizedObjectsDatset"://done
+                CreateResizedObjectsDatset("ResizedObjects2", "NewRecalculatedNormals");
                 break;
-            case "MirroredObjectsDatset":
-                CreateMirroredObjectsDatset("MirroredObjectsDatset", "NewRecalculatedNormals");
+            case "MirroredObjectsDatset"://done
+                CreateMirroredObjectsDatset("MirroredObjectsDatset2", "NewRecalculatedNormals");
                 break;
-            case "RotatedObjectsDatset":
-                CreateRotatedObjectsDatset("RotatedObjectsDatset", "NewRecalculatedNormals");
+            case "RotatedObjectsDatset"://done
+                CreateRotatedObjectsDatset("RotatedObjectsDatset2", "NewRecalculatedNormals");
                 break;
-            case "MovedObjectsDataset":
-                CreateMovedObjectsDataset("MovedObjectsDataset", "NewRecalculatedNormals");
+            case "MovedObjectsDataset"://done
+                CreateMovedObjectsDataset("MovedObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "ClusteredObjectsDataset":
-                CreateClusteredObjectsDataset("ClusteredObjectsDataset", "NewRecalculatedNormals");
+            case "ClusteredObjectsDataset"://done
+                CreateClusteredObjectsDataset("ClusteredObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "RippledObjectsDataset"://doneOK
-                CreateRippledObjectsDataset("RippledObjectsDataset", "NewRecalculatedNormals");
+            case "RippledObjectsDataset"://done
+                CreateRippledObjectsDataset("RippledObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "TwistedObjectsDataset": //doneOK
-                CreateTwistedObjectsDataset("TwistedObjectsDataset", "NewRecalculatedNormals");
+            case "TwistedObjectsDataset": //done
+                CreateTwistedObjectsDataset("TwistedObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "RandomVertexDisplacedObjectsDataset"://done//Must be remade
+            case "RandomVertexDisplacedObjectsDataset"://done
                 CreateRandomVertexDisplacementDataset("RandomVertexDisplacedObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "RandomRotatedNormalObjectsDataset":
-                CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset", "NewRecalculatedNormals");
+            case "RandomRotatedNormalObjectsDataset"://done
+                CreateRandomRotatedNormalObjectsDataset("RandomRotatedNormalObjectsDataset2", "NewRecalculatedNormals");
                 break;
-            case "RayCastedObjects":
-                CreateRayCastedObjects("RayCastedObjects", "NewRecalculatedNormals");
+            case "RayCastedObjects"://done
+                CreateRayCastedObjects("RayCastedObjects2", "NewRecalculatedNormals");
                 break;
-            case "FalsePostiveTestDataset":
-                CreateFalsePostiveTestDataset("FalsePostiveTestDataset", "NewRecalculatedNormals");
+            case "FalsePostiveTestDataset"://done
+                CreateFalsePostiveTestDataset("FalsePostiveTestDataset2", "NewRecalculatedNormals");
                 break;
             default:
                 //string pathToPreview = "/System/Applications/Preview.app/Contents/MacOS/Preview";
@@ -101,7 +101,7 @@ public class Controller : MonoBehaviour
         {
             case "ClusteredObjectsDataset":
                 if (timer > 3.0f && timer < 15.0f)
-                {
+                {   
                     timer += 15.0f;
                     List<GameObject> l = new();
                     l.Add(objects[0]);
@@ -131,14 +131,14 @@ public class Controller : MonoBehaviour
 
     public void CreateRayCastedObjects(String saveTo, String loadFrom)
     {
-        Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset, true);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         for (int i = 0; i < objFiles.Count; i++)
         {
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
 
-            mesh = objhandler.LoadMesh(objFiles[4]);
+            mesh = objhandler.LoadMesh(objFiles[counter]);
             mesh.RecalculateNormals();
 
             obj = Utilities.createGameObjectFromMesh(mesh);
@@ -165,6 +165,11 @@ public class Controller : MonoBehaviour
         objhandler = new(saveTo, pathToDataset, true);
         Utilities.addFloorToScene(25, 25);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+        while(counter < objFiles.Count) {
+            string filePath = pathToDataset + saveTo + "/" +clusterSize.ToString()+ "/" + Path.GetFileNameWithoutExtension(objFiles[counter]) + "/" + Path.GetFileName(objFiles[counter]);
+            if (File.Exists(filePath)) counter++;
+            else break;
+        }
         CreateClusteredObjectsDatasetHelper();
     }
 
@@ -190,31 +195,32 @@ public class Controller : MonoBehaviour
             Utilities.addMeshCollider(obj);
             obj.GetComponent<MeshRenderer>().material = bricks1;
         });
-        Debug.Log(objects);
         counter++;
         timer = 0;
     }
 
     public void CreateRandomRotatedNormalObjectsDataset(string saveTo, string loadFrom)
     {
-        UnityEngine.Random.InitState(1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> deltaAngles = new List<float>() { 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f };
-        objFiles.ForEach(objFile =>
+        for (int y = 0; y < objFiles.Count; y++)
         {
-            if (counter > 1) return; // To be removed in final version
-            Mesh mesh = objhandler.LoadMesh("/Users/haakongunnarsli/masterprosjekt/Dataset/RandomRotatedNormalObjectsDataset/capsule.obj");
+            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             mesh.RecalculateNormals();
             deltaAngles.ForEach(deltaAngle =>
-            {
+            {   
                 Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, deltaAngle);
-                counter++;
                 mesh.SetNormals(newNormals);
-                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, "test2");
+                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, deltaAngle.ToString());
             });
+            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+            randomState = UnityEngine.Random.state;
             counter++;
-        });
+        };
         objhandler.CompleteWriting();
 
     }
@@ -223,13 +229,15 @@ public class Controller : MonoBehaviour
 
     public void CreateRandomVertexDisplacementDataset(String saveTo, String loadFrom)
     {
-        UnityEngine.Random.InitState(1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> displacementRanges = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f };
-        objFiles.ForEach(objFile =>
+        for (int y = 0; y < objFiles.Count; y++)
         {
-            Mesh mesh = objhandler.LoadMesh(objFile);
+            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             mesh.RecalculateNormals();
             Vector3[] originalVertices = mesh.vertices;
             Vector3[] normals = mesh.normals;
@@ -244,42 +252,50 @@ public class Controller : MonoBehaviour
                 mesh.RecalculateNormals();
                 objhandler.saveToFile(new MeshData(mesh), mesh.vertices, displacementRange.ToString());
             }
+            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+            randomState = UnityEngine.Random.state;
             counter++;
-        });
+        };
         objhandler.CompleteWriting();
     }
 
 
     public void CreateResizedObjectsDatset(String saveTo, String loadFrom)
     {
-        UnityEngine.Random.InitState(1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> floatList = new List<float>() { 1.1f, 2.0f };
-        objFiles.ForEach(objFile =>
+        for (int i = 0; i < objFiles.Count; i++)
         {
-            if (counter > 1) return; // To be removed in final version
-            Mesh mesh = objhandler.LoadMesh(objFile);
+            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             foreach (float scale in floatList)
             {
                 Mesh resizedMesh = Utilities.TransformMesh(Utilities.Copy(mesh), scale, scale, scale);
                 objhandler.saveToFile(new MeshData(resizedMesh), mesh.vertices, scale.ToString());
             }
+            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+            randomState = UnityEngine.Random.state;
             counter++;
-        });
+        };
         objhandler.CompleteWriting();
     }
 
     public void CreateRippledObjectsDataset(String saveTo, String loadFrom)
     {
-        UnityEngine.Random.InitState(1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> freqList = new List<float>() { 40.0f, 40.0f, 40.0f, 40.0f, 40.0f, 40.0f };
         List<float> multiplierList = new List<float>() { 0.005f, 0.010f, 0.015f, 0.020f, 0.025f, 0.030f };
-        objFiles.ForEach(objFile =>
+         for (int i = 0; i < objFiles.Count; i++)
         {
-            Mesh mesh = objhandler.LoadMesh(objFile);
+            if (counter > 2) break;
+            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             foreach (var p in freqList.Zip(multiplierList, (freq, multiplier) => new { freq, multiplier }))
             {
                 GameObject go = Utilities.createGameObjectFromMesh(mesh);
@@ -291,20 +307,25 @@ public class Controller : MonoBehaviour
                 objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mesh.vertices, p.multiplier.ToString());
                 Destroy(go);
             }
+            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+            randomState = UnityEngine.Random.state;
             counter++;
-        });
+        };
         objhandler.CompleteWriting();
     }
 
     public void CreateTwistedObjectsDataset(String saveTo, String loadFrom)
     {
-        UnityEngine.Random.InitState(1);
+        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         List<float> degreeList = new List<float>() { 2.0f, 4.0f, 6.0f, 8.0f, 10.0f };
-        objFiles.ForEach(objFile =>
+         for (int i = 0; i < objFiles.Count; i++)
         {
-            Mesh mesh = objhandler.LoadMesh(objFile);
+            if (counter > 2) break;
+            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             foreach (float d in degreeList)
             {
                 GameObject go = Utilities.createGameObjectFromMesh(mesh);
@@ -315,8 +336,10 @@ public class Controller : MonoBehaviour
                 objhandler.saveToFile(new MeshData(go.GetComponent<MeshFilter>().mesh), mesh.vertices, d.ToString());
                 Destroy(go);
             }
+            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+            randomState = UnityEngine.Random.state;
             counter++;
-        });
+        };
         objhandler.CompleteWriting();
     }
 
@@ -327,7 +350,6 @@ public class Controller : MonoBehaviour
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         for (int i = 0; i < objFiles.Count; i++)
         {
-            if (counter > 2) break;
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
 
             Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
@@ -348,7 +370,6 @@ public class Controller : MonoBehaviour
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         for (int i = 0; i < objFiles.Count; i++)
         {
-            if (counter > 2) break;
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter+1)) { counter++; continue; }
 
             Mesh mesh = objhandler.LoadMesh(objFiles[i]);
@@ -379,13 +400,13 @@ public class Controller : MonoBehaviour
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         for (int i = 0; i < objFiles.Count; i++)
         {
-            if (counter > 2) break;
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
 
             Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             // Move small distance
-            int randomObject = Utilities.GenerateRandomNumbers(0, objFiles.Count, 1, counter)[0];
-            Mesh randomMesh = objhandler.LoadMesh(objFiles[counter]);
+            int randomNumber = Utilities.GenerateRandomNumbers(0, objFiles.Count, 1, counter)[0];
+            Mesh randomMesh = objhandler.LoadMesh(objFiles[randomNumber]);
+            randomMesh.name = mesh.name;
             objhandler.saveToFile(new MeshData(randomMesh), mesh.vertices);
 
             if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
@@ -402,7 +423,6 @@ public class Controller : MonoBehaviour
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         for (int i = 0; i < objFiles.Count; i++)
         {
-            if (counter > 2) break;
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
 
             Mesh mesh = objhandler.LoadMesh(objFiles[counter]);

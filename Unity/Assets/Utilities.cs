@@ -338,7 +338,7 @@ public class Utilities
         // Initialize arrays to store the angle deviations and degree intervals
         float[] angleDeviations = new float[normals.Length];
         int[] degreeIntervals = new int[11];
-
+        Vector3[] deviatedNormals = new Vector3[normals.Length];
         // Create a list to store the vectors in the interval [12, 15] degrees
         List<Vector3> vectorsInInterval = new List<Vector3>();
         // Deviate all normals and store the angle deviations
@@ -346,9 +346,11 @@ public class Utilities
         {
             Vector3 normal = normals[i];
             Vector3 deviatedNormal = DeviateNormal(normal, deviationAngleDegrees, orientationDeviationDegrees);
+            deviatedNormals[i] = deviatedNormal;
+            /*
             float angle = Vector3.Angle(deviatedNormal, normal.normalized);
             angleDeviations[i] = angle;
-
+           
             // Increment the count for the corresponding degree interval
             int degreeIntervalIndex = Mathf.Clamp((int)((Mathf.Abs(angle - deviationAngleDegrees)) / 3), 0, 10);
             degreeIntervals[degreeIntervalIndex]++;
@@ -358,8 +360,9 @@ public class Utilities
             {
                 vectorsInInterval.Add(normal);
             }
+            */
         }
-
+        /*
         // Calculate the distribution of degree intervals and concatenate in a single string
         string distributionString = $"Average deviation = {angleDeviations.Average()} target deviation = {deviationAngleDegrees} \n";
         for (int i = 0; i < degreeIntervals.Length; i++)
@@ -369,8 +372,8 @@ public class Utilities
         }
 
         Debug.Log(distributionString);
-
-        return normals;
+        */
+        return deviatedNormals;
     }
 
     public static Vector3 DeviateNormal(Vector3 normal, float deviationAngleDegrees, float orientationDeviationDegrees)
@@ -678,29 +681,30 @@ public static List<int> GetTrianglesWithSubsetVertices(Mesh originalMesh, List<V
     }
 
 
-    public static bool skipObject(List<string> objFiles, string path, int counter)
+public static bool skipObject(List<string> objFiles, string path, int counter)
+{
+    if (!Directory.Exists(path) || counter < 0 || counter >= objFiles.Count)
     {
-        if (!Directory.Exists(path))
-        {
-            return false;
-        }
-        string[] subCategories = Directory.GetDirectories(path);
-        bool skip = false;
-        foreach (string subCategory in subCategories)
-        {
-            string filePath = subCategory + "/" + Path.GetFileNameWithoutExtension(objFiles[counter])+"/" + Path.GetFileName(objFiles[counter]);
-            if (File.Exists(filePath))
-            {
-                skip = true;
-            }
-            else
-            {
-                skip = false;
-                break;
-            }
-        }
-        return skip;
+        return false;
     }
+    string[] subCategories = Directory.GetDirectories(path);
+    bool skip = false;
+    foreach (string subCategory in subCategories)
+    {
+        string filePath = subCategory + "/" + Path.GetFileNameWithoutExtension(objFiles[counter]) + "/" + Path.GetFileName(objFiles[counter]);
+        if (File.Exists(filePath))
+        {
+            skip = true;
+        }
+        else
+        {
+            skip = false;
+            break;
+        }
+    }
+    return skip;
+}
+
 
 
 
