@@ -22,11 +22,11 @@ public class Controller : MonoBehaviour
 {
     //Sett generator navn lik det datasettet du ønsker å kjøre.
 
-    private string generatorName = "ClusteredObjectsDataset";
+    private string generatorName = "RandomRotatedNormalObjectsDataset";
     private static string pathToDataset = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/";
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 999999999;//Number of objects that will be created.
-    private static int clusterSize = 100;// Set cluster size if necessary
+    private static int clusterSize = 10;// Set cluster size if necessary
     private static List<GameObject> objects = new();
     private GameObject obj;
     private static List<string> objFiles;
@@ -212,52 +212,89 @@ public class Controller : MonoBehaviour
             Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
             mesh.RecalculateNormals();
             deltaAngles.ForEach(deltaAngle =>
-            {   
-                Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, deltaAngle);
-                mesh.SetNormals(newNormals);
-                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, deltaAngle.ToString());
-            });
-            if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
-            randomState = UnityEngine.Random.state;
-            counter++;
-        };
-        objhandler.CompleteWriting();
-
-    }
-
-
-
-    public void CreateRandomVertexDisplacementDataset(String saveTo, String loadFrom)
-    {
-        randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
-        objhandler = new ObjHandler(saveTo, pathToDataset);
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> displacementRanges = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f };
-        for (int y = 0; y < objFiles.Count; y++)
-        {
-            if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
-
-            Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
-            mesh.RecalculateNormals();
-            Vector3[] originalVertices = mesh.vertices;
-            Vector3[] normals = mesh.normals;
-            foreach (float displacementRange in displacementRanges)
-            {
-                Vector3[] displacedVertices = new Vector3[originalVertices.Length];
-                for (int i = 0; i < originalVertices.Length; i++)
                 {
-                    displacedVertices[i] = originalVertices[i] + (displacementRange * normals[i] * UnityEngine.Random.Range(-1f, 1f));
-                }
-                mesh.vertices = displacedVertices;
-                mesh.RecalculateNormals();
-                objhandler.saveToFile(new MeshData(mesh), mesh.vertices, displacementRange.ToString());
-            }
+                    float randomDeltaAngle = UnityEngine.Random.Range(0, 360);
+                    Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, randomDeltaAngle);
+                    mesh.SetNormals(newNormals);
+                    objhandler.saveToFile(new MeshData(mesh), mesh.vertices, deltaAngle.ToString());
+                });
             if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
             randomState = UnityEngine.Random.state;
             counter++;
         };
         objhandler.CompleteWriting();
+
     }
+
+
+
+public void CreateRandomVertexDisplacementDataset(String saveTo, String loadFrom)
+{
+    randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
+    objhandler = new ObjHandler(saveTo, pathToDataset);
+    objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
+    List<float> displacementRanges = new List<float>() { 0.0001f, 0.0002f, 0.0005f, 0.0010f, 0.0015f, 0.0020f, 0.0025f, 0.0030f, 0.004f, 0.005f };
+    int[] rangeCounters = new int[10];
+
+
+    for (int y = 0; y < objFiles.Count; y++)
+    {
+        if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
+
+
+        Mesh mesh = objhandler.LoadMesh(objFiles[counter]);
+        mesh.RecalculateNormals();
+        Vector3[] originalVertices = mesh.vertices;
+        Vector3[] normals = mesh.normals;
+
+
+        foreach (float displacementRange in displacementRanges)
+        {
+            Vector3[] displacedVertices = new Vector3[originalVertices.Length];
+            for (int i = 0; i < originalVertices.Length; i++)
+            {
+                (float gaussianNoise, int rangeIndex) = GaussianNoise(0, 1, -1, 1);
+                rangeCounters[rangeIndex]++;
+                displacedVertices[i] = originalVertices[i] + (displacementRange * normals[i] * gaussianNoise);
+            }
+            mesh.vertices = displacedVertices;
+            mesh.RecalculateNormals();
+            objhandler.saveToFile(new MeshData(mesh), mesh.vertices, displacementRange.ToString());
+        }
+        if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
+        randomState = UnityEngine.Random.state;
+        counter++;
+    }
+
+
+    for (int i = 0; i < rangeCounters.Length; i++)
+    {
+        Debug.Log($"Range {i + 1}: {rangeCounters[i]}");
+    }
+
+
+    objhandler.CompleteWriting();
+}
+
+
+private (float, int) GaussianNoise(float mean, float stdDev, float minRange, float maxRange)
+{
+    float noise;
+    int rangeIndex;
+    do
+    {
+        float u1 = UnityEngine.Random.Range(0f, 1f);
+        float u2 = UnityEngine.Random.Range(0f, 1f);
+        float z1 = Mathf.Sqrt(-2.0f * Mathf.Log(u1)) * Mathf.Cos(2.0f * Mathf.PI * u2);
+        noise = mean + stdDev * z1;
+        rangeIndex = Mathf.FloorToInt((noise - minRange) / ((maxRange - minRange) / 10));
+    } while (noise < minRange || noise > maxRange || rangeIndex < 0 || rangeIndex >= 10);
+
+
+    return (noise, rangeIndex);
+}
+
+
 
 
     public void CreateResizedObjectsDatset(String saveTo, String loadFrom)
@@ -265,7 +302,7 @@ public class Controller : MonoBehaviour
         randomState = Utilities.LoadRandomStateFromFileOrInit(pathToDataset + saveTo, 1);
         objhandler = new ObjHandler(saveTo, pathToDataset);
         objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
-        List<float> floatList = new List<float>() { 1.1f, 2.0f };
+        List<float> floatList = new List<float>() {0.5f, 0.9f, 1.1f, 2.0f };
         for (int i = 0; i < objFiles.Count; i++)
         {
             if (Utilities.skipObject(objFiles, pathToDataset + saveTo, counter + 1)) { counter++; continue; }
@@ -407,6 +444,7 @@ public class Controller : MonoBehaviour
             int randomNumber = Utilities.GenerateRandomNumbers(0, objFiles.Count, 1, counter)[0];
             Mesh randomMesh = objhandler.LoadMesh(objFiles[randomNumber]);
             randomMesh.name = mesh.name;
+            randomMesh.RecalculateNormals();
             objhandler.saveToFile(new MeshData(randomMesh), mesh.vertices);
 
             if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
@@ -475,11 +513,6 @@ public class Controller : MonoBehaviour
         objhandler.CompleteWriting();
 
     }
-
-
-
-
-
 
 
     //Takes in the google datset and recalulates the normals and saves it.

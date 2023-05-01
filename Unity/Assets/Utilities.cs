@@ -165,7 +165,6 @@ public class Utilities
         return mesh;
     }
 
-    //takes in a Mesh and resize it to a random size.TOOODOOO.public static Mesh RandomRotateMesh(Mesh mesh, float degreeX = -1f, float degreeY = -1f, float degreeZ = -1f)
     public static Mesh RandomRotateMesh(Mesh mesh, float degreeX = -1f, float degreeY = -1f, float degreeZ = -1f)
     {
         //Rotating by the product lhs * rhs is the same as applying the two rotations in sequence.
@@ -395,7 +394,7 @@ public class Utilities
         {
             return new(deviatedNormal.X, deviatedNormal.Y, deviatedNormal.Z);
         }
-        else if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z > 0)
+        else if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z < 0)
         {
             return new(-deviatedNormal.X, -deviatedNormal.Y, -deviatedNormal.Z);
         }

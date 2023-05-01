@@ -8,6 +8,7 @@ import numpy as np
 import math
 import random
 import gc
+import shutil
 
 def print(data):
     for window in bpy.context.window_manager.windows:
@@ -222,16 +223,25 @@ def recursive_filter(obj_file, radius, subcategory_ranges):
         recursive_filter(obj_file, radius*multiplierL, lower)
     return
 
-def calculate_fraction(a, max_a, x, scaling_factor=2):
-    if a <= 15:
-        return x
-    adjusted_a = a - 15
-    adjusted_max_a = max_a - 15
-    fraction = adjusted_a / adjusted_max_a
-    exponent = -scaling_factor * math.log2(x) * fraction
-    result = x * math.exp(-exponent) + (1 - math.exp(-exponent))
+def test_calculate_fraction():
+    values = [0.95, 1.05]
+    max_a = 30
+    print("{:^5} | {:^5} | {:^5} | {:^10}".format("a", "max_a", "x", "result"))
+    print("-" * 27)
+    for a in range(30):
+        for x in values:
+            result = calculate_fraction(a, max_a, x)
+            print("{:^5} | {:^5} | {:^5} | {:^10.5f}".format(a, max_a, x, result))
 
-    return result
+def calculate_fraction(a, max_a, x, threshold=10):
+    distance = abs(x - 1)
+    if a > threshold:
+        a, max_a = a - threshold, max_a - threshold
+        reduced_distance = distance * (math.log2(a) / math.log2(max_a))
+    else:
+        return x
+    return x + reduced_distance if x < 1 else x - reduced_distance
+
 
 def write_to_file(filename, data):
     p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
@@ -240,24 +250,47 @@ def write_to_file(filename, data):
     with open(filename, 'a+') as file:
         file.write(data)
 
+
 def skip(i):
     p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
-    next_obj_file = None
-    if i + 1 < len(obj_files):
-        next_obj_file = obj_files[i + 1]
-    
-    if next_obj_file == None:
-        return False
-    
-    count = 0
-    for root, dirs, files in os.walk(p):
-        for filename in files:
-            if os.path.basename(next_obj_file) == os.path.basename(filename):
-                count += 1
-                if count == len(subcategories):
-                    return True
-    return False
+    current_obj_file = obj_files[i] if i < len(obj_files) else None
+    next_obj_file = obj_files[i + 1] if i + 1 < len(obj_files) else None
 
+    obj_files_to_check = [f for f in [current_obj_file, next_obj_file] if f is not None]
+    skip = True
+    for obj_file in obj_files_to_check:
+        if skip == False:
+            break
+        count = 0
+        skip = False
+        for root, dirs, files in os.walk(p):
+            for filename in files:
+                if os.path.basename(obj_file) == os.path.basename(filename):
+                    count += 1
+                    if count == len(subcategories):
+                        skip = True
+    return skip
+
+
+def delete_incomplete_folders():
+    for i, obj_file in enumerate(obj_files):
+        p = os.path.abspath(os.path.join(os.path.dirname(__file__), output_dir))
+        current_obj_file = obj_files[i] if i < len(obj_files) else None
+
+        obj_files_to_check = [f for f in [current_obj_file, next_obj_file] if f is not None]
+
+        for obj_file in obj_files_to_check:
+            for root, dirs, files in os.walk(p):
+                count = 0
+                for filename in files:
+                    if os.path.basename(obj_file) == os.path.basename(filename):
+                        count += 1
+                        if count == len(subcategories):
+                            break
+
+                if count < len(subcategories):
+                    folder_to_delete = os.path.join(root, os.path.dirname(filename))
+                    shutil.rmtree(folder_to_delete)
 
 
 def print_m_values():
@@ -284,6 +317,9 @@ def print_m_values():
 #      
 #        print(f"size={size}, m={m}, m2 = {m2} pivot1 = {pivot1} pivot2 = {pivot2}")
 
+
+
+
 def new_cylinder_radius(old_radius, volume_change):
     old_volume = math.pi * (old_radius ** 2)
     target_volume = old_volume + volume_change
@@ -300,7 +336,7 @@ def get_volume(obj_file):
     return v
 
 #initial radius fraction makes the radius smaler and the max radius fraction will result in change of number of cylinders
-def get_initial_and_max_radius(obj_file, initial_radius_fraction=0.1, max_radius_fraction=0.25):
+def get_initial_and_max_radius(obj_file, initial_radius_fraction=0.2, max_radius_fraction=0.45):
     obj = load_obj_file(obj_file, (0,0,0))
     obj_dimensions = obj.dimensions
     avg_dimension = (obj_dimensions.x + obj_dimensions.y + obj_dimensions.z) / 3
@@ -336,7 +372,7 @@ np.random.seed(2)
 random_state = random.getstate()
 numpy_state = np.random.get_state()
 #volume = 0
-max_attempts = 40
+max_attempts = 30
 total_attempts = 0
 attempts = 0
 counter = 0
@@ -344,41 +380,42 @@ initial_radius = 0
 max_radius = 0
 subcategories = [(10.1, 20.0), (20.1, 30.0), (30.1, 40.0), (40.1, 50.0), (50.1, 60.0), (60.1, 70.0), (70.1, 80.0), (80.1, 90.0)]
 #print_m_values()
+#test_calculate_fraction()
+delete_incomplete_folders()
+#if os.path.exists(rng_states_path):
+#    try:
+#        with open(rng_states_path, "rb") as f:
+#            loaded_random_state, loaded_numpy_state = pickle.load(f)
+#        random.setstate(loaded_random_state)
+#        np.random.set_state(loaded_numpy_state)
+#    except (FileNotFoundError, TypeError, ValueError) as e:
+#        print(f"An error occurred while loading the RNG states: {e}")
 
-if os.path.exists(rng_states_path):
-    try:
-        with open(rng_states_path, "rb") as f:
-            loaded_random_state, loaded_numpy_state = pickle.load(f)
-        random.setstate(loaded_random_state)
-        np.random.set_state(loaded_numpy_state)
-    except (FileNotFoundError, TypeError, ValueError) as e:
-        print(f"An error occurred while loading the RNG states: {e}")
+#clear_scene()
 
-clear_scene()
+#for i, obj_file in enumerate(obj_files):
+#    if skip(i):
+#        write_to_file("halla.txt", f"Skipping: {os.path.basename(obj_file)}\n")
+#        continue
+#    try:
+#        #volume = get_volume(obj_file)
+#        initial_radius, max_radius = get_initial_and_max_radius(obj_file)
+#        recursive_filter(obj_file, initial_radius, subcategories.copy())
+#    except Exception as e:
+#        print(f"An exception occurred while processing {obj_file}: {str(e)}")
+#        print(traceback.format_exc())
+#        break
 
-for i, obj_file in enumerate(obj_files):
-    if skip(i):
-        write_to_file("halla.txt", f"Skipping: {os.path.basename(obj_file)}\n")
-        continue
-    try:
-        #volume = get_volume(obj_file)
-        initial_radius, max_radius = get_initial_and_max_radius(obj_file)
-        recursive_filter(obj_file, initial_radius, subcategories.copy())
-    except Exception as e:
-        print(f"An exception occurred while processing {obj_file}: {str(e)}")
-        print(traceback.format_exc())
-        break
+#    # Save the last state, not the current one (same behavior as with the skip function)
+#    if i != 0:
+#        with open(rng_states_path, "wb") as f:
+#            pickle.dump((random_state, numpy_state), f)
+#    
+#    random_state = random.getstate()
+#    numpy_state = np.random.get_state()
 
-    # Save the last state, not the current one (same behavior as with the skip function)
-    if i != 0:
-        with open(rng_states_path, "wb") as f:
-            pickle.dump((random_state, numpy_state), f)
-    
-    random_state = random.getstate()
-    numpy_state = np.random.get_state()
-
-    write_to_file("halla.txt", f"-----------Object: {os.path.basename(obj_file)} ------ Attempts {total_attempts}-----------------\n\n")
-    counter += 1
-    attempts = 0
-    total_attempt = 0
+#    write_to_file("halla.txt", f"-----------Object: {os.path.basename(obj_file)} ------ Attempts {total_attempts}-----------------\n\n")
+#    counter += 1
+#    attempts = 0
+#    total_attempts = 0
 
