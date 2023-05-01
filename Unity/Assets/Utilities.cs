@@ -332,7 +332,7 @@ public class Utilities
         return highestIndices[UnityEngine.Random.Range(0, highestIndices.Count)];
     }
 
-    public static Vector3[] DeviateAllNormals(Vector3[] normals, float deviationAngleDegrees, float orientationDeviationDegrees)
+    public static Vector3[] DeviateAllNormals(Vector3[] normals, float deviationAngleDegrees, bool RandomRotationDeviation = false)
     {
         // Initialize arrays to store the angle deviations and degree intervals
         float[] angleDeviations = new float[normals.Length];
@@ -344,7 +344,7 @@ public class Utilities
         for (int i = 0; i < normals.Length; i++)
         {
             Vector3 normal = normals[i];
-            Vector3 deviatedNormal = DeviateNormal(normal, deviationAngleDegrees, orientationDeviationDegrees);
+            Vector3 deviatedNormal = DeviateNormal(normal, deviationAngleDegrees, RandomRotationDeviation);
             deviatedNormals[i] = deviatedNormal;
             /*
             float angle = Vector3.Angle(deviatedNormal, normal.normalized);
@@ -375,9 +375,10 @@ public class Utilities
         return deviatedNormals;
     }
 
-    public static Vector3 DeviateNormal(Vector3 normal, float deviationAngleDegrees, float orientationDeviationDegrees)
+    public static Vector3 DeviateNormal(Vector3 normal, float deviationAngleDegrees, bool RandomRotationDeviation)
     {
         System.Numerics.Vector3 nor = new(normal.x, normal.y, normal.z);
+        float randomRotationDeviationDegrees = RandomRotationDeviation ? UnityEngine.Random.Range(0, 360) : deviationAngleDegrees;
         // Start with a vector aligned with the z-axis
         System.Numerics.Vector3 xAxis = new(1, 0, 0);
         System.Numerics.Vector3 zAxis = new(0, 0, 1);
@@ -385,18 +386,18 @@ public class Utilities
 
         // Compute the normal rotations
         System.Numerics.Matrix4x4 deviationRotation = System.Numerics.Matrix4x4.CreateRotationX(DegreeToRadian(deviationAngleDegrees));
-        System.Numerics.Matrix4x4 orientationRotation = System.Numerics.Matrix4x4.CreateRotationZ(DegreeToRadian(orientationDeviationDegrees));
+        System.Numerics.Matrix4x4 orientationRotation = System.Numerics.Matrix4x4.CreateRotationZ(DegreeToRadian(randomRotationDeviationDegrees));
 
         // Apply rotations
-        deviatedNormal = System.Numerics.Vector3.Transform(deviatedNormal, orientationRotation * deviationRotation);
+        deviatedNormal = System.Numerics.Vector3.Transform(deviatedNormal,  deviationRotation*orientationRotation);
 
         if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z > 0)
         {
-            return new(deviatedNormal.X, deviatedNormal.Y, deviatedNormal.Z);
+            deviatedNormal = new(deviatedNormal.X, deviatedNormal.Y, deviatedNormal.Z);
         }
         else if (nor.X == 0.0f && nor.Y == 0.0f && nor.Z < 0)
         {
-            return new(-deviatedNormal.X, -deviatedNormal.Y, -deviatedNormal.Z);
+            deviatedNormal = new(-deviatedNormal.X, -deviatedNormal.Y, -deviatedNormal.Z);
         }
 
         // Compute vector orthogonal to the z-axis and normal

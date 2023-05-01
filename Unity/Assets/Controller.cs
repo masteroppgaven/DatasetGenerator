@@ -23,7 +23,7 @@ public class Controller : MonoBehaviour
     //Sett generator navn lik det datasettet du ønsker å kjøre.
 
     private string generatorName = "RandomRotatedNormalObjectsDataset";
-    private static string pathToDataset = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/";
+    private static string pathToDataset = "/mnt/VOID/projects/shape_descriptors_benchmark/Dataset/"; //"/Users/jonathanbrooks/masteroppgaven/Dataset/"; //
     private static string fileNameOfNewObj = "NewObj";
     private static int numberOfObjects = 999999999;//Number of objects that will be created.
     private static int clusterSize = 10;// Set cluster size if necessary
@@ -213,10 +213,10 @@ public class Controller : MonoBehaviour
             mesh.RecalculateNormals();
             deltaAngles.ForEach(deltaAngle =>
                 {
-                    float randomDeltaAngle = UnityEngine.Random.Range(0, 360);
-                    Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, randomDeltaAngle);
+                    Vector3[] newNormals = Utilities.DeviateAllNormals(mesh.normals, deltaAngle, true);
                     mesh.SetNormals(newNormals);
                     objhandler.saveToFile(new MeshData(mesh), mesh.vertices, deltaAngle.ToString());
+                    mesh.RecalculateNormals();
                 });
             if (counter != 0) Utilities.SaveRandomStateToFile(randomState, pathToDataset + saveTo);
             randomState = UnityEngine.Random.state;
@@ -521,14 +521,13 @@ private (float, int) GaussianNoise(float mean, float stdDev, float minRange, flo
     {
         objhandler = new(saveTo, pathToDataset);
         //Creates a list of all .obj files in the dataset folder
-        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom + "/RecalcRemovedLoose", "*.obj", SearchOption.AllDirectories));
+        objFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.obj", SearchOption.AllDirectories));
         //List<string> metaFiles = new List<string>(Directory.GetFiles(pathToDataset + loadFrom, "*.pbtxt", SearchOption.AllDirectories)); //get metadata
-        //List<string> recalculated = new List<string>(Directory.GetFiles(pathToDataset + saveTo + "/0-100", "*.obj", SearchOption.AllDirectories));
+        //List<string> recalculated = new List<string>(Directory.GetFiles(pathToDataset + loadFrom + "/0-100", "*.obj", SearchOption.AllDirectories));
         //For each objfile in objFiles does Loadmesh get called and then WriteMeshToObj
         //Creates a counter that is used to name the new .obj files that always consist of four digits
         objFiles.ForEach(objFile =>
         {
-
             string newName = counter.ToString().PadLeft(4, '0');
             Mesh mesh = objhandler.LoadMesh(objFile, newName);
             mesh.RecalculateNormals();
